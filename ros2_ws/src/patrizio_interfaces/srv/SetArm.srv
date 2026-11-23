@@ -1,0 +1,7 @@
+# Spec: softwarespezifikation.md section 5.2 (/hw/set_arm).
+# Arming/disarming of the safety relay via the Nano. The bridge reports success
+# only after the Nano has answered ARMED (timeout 1 s, otherwise E102).
+bool arm
+---
+bool success
+uint8 state               # SafetyState.state after the command

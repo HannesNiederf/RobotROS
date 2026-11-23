@@ -1,0 +1,7 @@
+# Spec: softwarespezifikation.md section 10.4 (/docking/undock).
+# Result and feedback fields are chosen here.
+---
+bool success
+string error_code
+---
+float32 progress

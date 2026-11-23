@@ -1,0 +1,7 @@
+# Spec: softwarespezifikation.md section 5.2 (/mission/resolve_alert).
+# Response fields are not given in the spec; success/error_code chosen here.
+uint32 alert_id
+string option             # one of OperatorAlert.options
+---
+bool success
+string error_code

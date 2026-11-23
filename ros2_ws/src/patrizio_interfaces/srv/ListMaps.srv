@@ -1,0 +1,5 @@
+# Spec: softwarespezifikation.md section 5.2 (/map/list).
+# Fields are chosen here (the spec only names the service).
+---
+string[] names
+string active_name        # empty if no map is active

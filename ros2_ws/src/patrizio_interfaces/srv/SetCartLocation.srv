@@ -1,0 +1,7 @@
+# Spec: softwarespezifikation.md section 5.2 (/mission/set_cart_location).
+# Response fields are not given in the spec; success/error_code chosen here.
+string cart_name
+uint32 station_id         # 0 = cart is not at any station
+---
+bool success
+string error_code

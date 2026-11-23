@@ -1,0 +1,5 @@
+# Spec: softwarespezifikation.md section 5.2 (/map/delete_station).
+uint32 station_id
+---
+bool success
+string error_code

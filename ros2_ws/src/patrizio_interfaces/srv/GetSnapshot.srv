@@ -1,0 +1,10 @@
+# Spec: softwarespezifikation.md section 5.2 (/map/get_snapshot).
+# Returns map image, stations, zones and contact points once (UI start, reconnect).
+# Fields are chosen here.
+---
+bool success
+sensor_msgs/CompressedImage map_image
+MapMeta map_meta
+Station[] stations
+KeepoutZone[] zones
+ContactPoint[] contacts

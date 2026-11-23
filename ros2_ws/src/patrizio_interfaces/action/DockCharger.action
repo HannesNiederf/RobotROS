@@ -1,0 +1,10 @@
+# Spec: spez_aenderung_01_rueckwaerts.md section 3.3 (/docking/dock_charger).
+# Result and feedback fields are chosen here.
+uint32 station_id
+---
+bool success
+string error_code         # e.g. E111, E311; WAITING_MAINS is reported via MissionStatus
+---
+string phase
+uint8 attempt
+float32 progress

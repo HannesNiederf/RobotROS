@@ -1,0 +1,8 @@
+# Spec: spez_aenderung_01_rueckwaerts.md D-38 (/docking/nudge).
+# Fine adjustment while teaching a station, at nudge_speed (0.02 m/s).
+# Fields are chosen here.
+float32 forward_m         # positive = forward, negative = backward
+float32 rotate_deg        # positive = counter-clockwise
+---
+bool success
+string error_code

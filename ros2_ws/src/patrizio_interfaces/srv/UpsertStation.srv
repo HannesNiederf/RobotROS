@@ -1,0 +1,7 @@
+# Spec: softwarespezifikation.md section 5.2 and 8.4 (/map/upsert_station).
+# station.id == 0 creates a new station, otherwise the station is updated.
+Station station
+---
+bool success
+uint32 station_id
+string error_code

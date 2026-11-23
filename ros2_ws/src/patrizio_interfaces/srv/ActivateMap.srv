@@ -1,0 +1,6 @@
+# Spec: softwarespezifikation.md section 5.2 (/map/activate).
+# Fields are chosen here (the spec only names the service).
+string name
+---
+bool success
+string error_code
