@@ -103,7 +103,7 @@ def test_stale_cmake_entry_is_reported(tmp_path):
 
 
 def test_repository_interfaces_are_clean():
-    errors, count = ci.check_package(REPO_ROOT / "ros2_ws" / "src" / "patrizio_interfaces")
+    errors, count = ci.check_package(REPO_ROOT / "ros2_ws" / "src" / "robotros_interfaces")
     assert errors == []
     # 19 messages + 18 services + 5 actions (softwarespezifikation.md section 5, ÄM-01)
     assert count == 42

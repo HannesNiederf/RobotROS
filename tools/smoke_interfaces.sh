@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Post-build smoke test for patrizio_interfaces: every interface file in the
+# Post-build smoke test for robotros_interfaces: every interface file in the
 # package must be installed and visible to `ros2 interface show`, and a few
 # generated Python types must behave as the spec says.
 # Usage (after `colcon build` in ros2_ws): tools/smoke_interfaces.sh
 set -eo pipefail
 
-PKG=patrizio_interfaces
+PKG=robotros_interfaces
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/ros2_ws/src/$PKG"
 
@@ -31,10 +31,10 @@ done
 echo "checked $count interface(s) with ros2 interface show"
 
 python3 - <<'PY'
-from patrizio_interfaces.msg import (HubState, MissionStatus, Order, OrderList,
+from robotros_interfaces.msg import (HubState, MissionStatus, Order, OrderList,
                                      RangeState, SafetyState, Station)
-from patrizio_interfaces.srv import CreateOrder, GetSnapshot, SetArm
-from patrizio_interfaces.action import EngageCart, Localize
+from robotros_interfaces.srv import CreateOrder, GetSnapshot, SetArm
+from robotros_interfaces.action import EngageCart, Localize
 
 # Values fixed by softwarespezifikation.md section 5.1 / spez_firmware_protokoll.md 2.3.
 assert (SafetyState.BOOT_LOCKED, SafetyState.ESTOP, SafetyState.WAIT_ACK, SafetyState.ARMED) == (0, 1, 2, 3)

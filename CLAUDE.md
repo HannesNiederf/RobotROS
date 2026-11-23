@@ -1,4 +1,4 @@
-# CLAUDE.md - RobotROS (project "Patrizio")
+# CLAUDE.md - robotROS
 
 ROS 2 Jazzy transport robot: maps a room, shows map and robot pose on a Surface touch UI,
 and carries grid carts from a chosen station to another. Raspberry Pi 5 runs the robot,
@@ -15,18 +15,26 @@ two Arduino Nano Every handle real-time and safety, the Surface shows a web UI.
 ## Language
 - Code, identifiers, comments, commit messages and PR text: English.
 - Documents and talking to the owner (Hannes): German. Final documentation also Italian and English.
+- Project name: robotROS. Identifiers, paths and hostnames use lowercase `robotros` (`robotros_interfaces`,
+  `robotros.service`, hostname `robotros`). Do not use the former working name in new text or code.
+  ADR 0001 maps the old identifiers in the specification documents to the new ones.
+- Hannes has no GitHub or git experience. When he has to do something there, give numbered single steps
+  with the exact click or command and the expected result, and explain each new term once in one sentence.
+  Do the git and GitHub work yourself wherever your tools allow it.
 
 ## Where the specification lives
 The binding specification is currently in the claude.ai project "RobotROS", not yet in this repository:
 `softwarespezifikation.md` (D-01..D-28), `spez_aenderung_01_rueckwaerts.md` (ÄM-01, takes precedence),
 `spez_firmware_protokoll.md`, `spez_parameter_tests.md`, `pinplan_nano.md`.
 Copies are meant to go to `docs/spec/`. If `docs/spec/` is empty, ask the owner instead of guessing.
+The specification documents still use the former package and path prefix in identifiers; read them
+together with the mapping in `docs/adr/0001-projektname-robotros.md`.
 Conflict rule: the newer change wins (D-39 and round 26 > ÄM-01 > the three specs > projektwissen).
 Decisions that change the spec are recorded as ADRs in `docs/adr/`.
 
 ## Layout
 ```
-ros2_ws/src/   ROS packages (spec section 3.2). Implemented so far: patrizio_interfaces
+ros2_ws/src/   ROS packages (spec section 3.2). Implemented so far: robotros_interfaces
 firmware/      Nano firmware (PlatformIO) - not started
 web_ui/        Browser UI (vanilla JS, no build step) - not started
 deploy/        systemd, udev, sudoers, chrony, cyclonedds.xml - not started
@@ -48,7 +56,7 @@ a new kind of code appears (ruff, PlatformIO native tests, `tools/check_i18n.py`
 ## Conventions (spec section 16)
 - Python with type annotations, `ruff`; C++ with `clang-format`; ROS parameters always declared with defaults.
 - Keep logic out of node classes (`core/*.py`) so unit tests run without ROS.
-- No values in code that belong in YAML (`patrizio_bringup/config/`). Never use wall-clock time for logic.
+- No values in code that belong in YAML (`robotros_bringup/config/`). Never use wall-clock time for logic.
 - Branches: `main` always works; work on `feature/<topic>`; open a PR; changes to safety logic need a second pair of eyes.
 
 ## Environment
