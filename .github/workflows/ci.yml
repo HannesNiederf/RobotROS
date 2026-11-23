@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast checks that need no ROS installation.
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Interface file syntax check
+        run: python3 tools/check_interfaces.py ros2_ws/src
+      - name: Tool tests
+        run: |
+          python3 -m pip install --break-system-packages pytest
+          python3 -m pytest tools/tests -q
+
+  # Authoritative build and test on ROS 2 Jazzy (softwarespezifikation.md section 16).
+  ros:
+    runs-on: ubuntu-24.04
+    container: ros:jazzy
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y ros-dev-tools
+          rosdep update --rosdistro jazzy
+          rosdep install --from-paths ros2_ws/src --ignore-src -r -y --rosdistro jazzy
+      - name: Build
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          cd ros2_ws
+          colcon build --event-handlers console_direct+
+      - name: Test
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          cd ros2_ws
+          colcon test --event-handlers console_direct+
+          colcon test-result --verbose
+      - name: Interface smoke test
+        run: tools/smoke_interfaces.sh

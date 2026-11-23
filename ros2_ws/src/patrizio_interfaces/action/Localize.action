@@ -1,0 +1,16 @@
+# Spec: softwarespezifikation.md section 7.3 and spez_aenderung_01_rueckwaerts.md D-32 (/localize/*).
+# The spec names the action only; goal, result and feedback fields are chosen here.
+# GLOBAL: start-up / no cart, may rotate on the spot (7.3).
+# RELOCALIZE: with cart (mask active), standing only, local then global re-initialisation (D-32).
+uint8 MODE_GLOBAL=0
+uint8 MODE_RELOCALIZE=1
+
+uint8 mode
+---
+bool success
+string error_code         # e.g. E201
+float32 sigma_xy
+float32 sigma_yaw
+---
+string phase
+float32 sigma_xy

@@ -1,0 +1,6 @@
+# Spec: softwarespezifikation.md section 5.2 and 9.1 (/mission/set_mode).
+# Response fields are not given in the spec; success/error_code chosen here.
+string mode               # MissionStatus.MODE_*
+---
+bool success
+string error_code

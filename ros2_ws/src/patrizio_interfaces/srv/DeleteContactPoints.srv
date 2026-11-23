@@ -1,0 +1,12 @@
+# Spec: softwarespezifikation.md section 5.2 and 8.2 (/map/delete_contacts).
+# The spec says "ids or radius"; the exact fields are chosen here.
+# Selection: delete_all, or the listed ids, or all points within radius of (center_x, center_y).
+bool delete_all
+uint32[] ids
+float32 center_x
+float32 center_y
+float32 radius            # m, 0 = not used
+---
+bool success
+uint32 deleted_count
+string error_code

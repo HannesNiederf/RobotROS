@@ -1,0 +1,14 @@
+# Spec: softwarespezifikation.md section 5.2 (/mission/order_action).
+# The spec gives (order_id, action, value); the type of value and the response are chosen here.
+string ACTION_CANCEL="CANCEL"
+string ACTION_RETRY="RETRY"
+string ACTION_SET_PRIORITY="SET_PRIORITY"
+string ACTION_RESUME_AT_STEP="RESUME_AT_STEP"
+
+uint32 order_id
+string action
+string value              # priority as text for SET_PRIORITY, step name for RESUME_AT_STEP
+---
+bool success
+string error_code
+string detail

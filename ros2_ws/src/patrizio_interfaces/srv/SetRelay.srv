@@ -1,0 +1,7 @@
+# Spec: softwarespezifikation.md section 5.2 (/hw/set_relay).
+# Response fields are not given in the spec; success/message chosen here.
+uint8 channel             # 1 charge, 2 power, 3 reserve (spez_firmware_protokoll.md 2.2)
+bool on
+---
+bool success
+string message

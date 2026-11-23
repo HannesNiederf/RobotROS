@@ -1,0 +1,5 @@
+# Spec: softwarespezifikation.md section 5.2 (/map/delete_zone).
+uint32 zone_id
+---
+bool success
+string error_code

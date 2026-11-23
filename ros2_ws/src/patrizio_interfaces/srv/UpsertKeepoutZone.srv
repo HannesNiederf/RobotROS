@@ -1,0 +1,7 @@
+# Spec: softwarespezifikation.md section 5.2 and 8.3 (/map/upsert_zone).
+# zone.id == 0 creates a new zone, otherwise the zone is updated.
+KeepoutZone zone
+---
+bool success
+uint32 zone_id
+string error_code

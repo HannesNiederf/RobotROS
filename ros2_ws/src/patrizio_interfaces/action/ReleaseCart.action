@@ -1,0 +1,10 @@
+# Spec: spez_aenderung_01_rueckwaerts.md section 3.2 (/docking/release_cart).
+# Phases: TURN_PRE, SLOT_CHECK, TURN_AROUND, REVERSE_IN, LOWER, EXIT_FWD.
+# Result and feedback fields are chosen here.
+uint32 station_id
+---
+bool success
+string error_code         # e.g. E306
+---
+string phase
+float32 progress

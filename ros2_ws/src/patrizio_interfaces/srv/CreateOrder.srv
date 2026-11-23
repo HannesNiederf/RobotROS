@@ -1,0 +1,11 @@
+# Spec: softwarespezifikation.md section 5.2 and 9.3 (/mission/create_order).
+string type               # Order.TYPE_*
+uint8 priority            # 0-9, default 5
+uint32 source_station_id
+uint32 dest_station_id
+geometry_msgs/Pose2D goal # only for GOTO_POINT
+---
+bool success
+uint32 order_id
+string error_code         # e.g. E301, see section 9.5
+string detail

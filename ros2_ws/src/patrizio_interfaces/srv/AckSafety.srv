@@ -1,0 +1,9 @@
+# Spec: softwarespezifikation.md section 5.2 and 6.3 (/mission/ack_safety).
+string RESUME_RESUME="RESUME"
+string RESUME_KEEP_PAUSED="KEEP_PAUSED"
+string RESUME_CANCEL_ORDER="CANCEL_ORDER"
+
+string resume_mode
+---
+bool success
+string error_code
