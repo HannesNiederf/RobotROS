@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>patrizio_interfaces</name>
+  <name>robotros_interfaces</name>
   <version>0.1.0</version>
-  <description>Messages, services and actions of the Patrizio transport robot (softwarespezifikation.md section 5).</description>
+  <description>Messages, services and actions of the robotROS transport robot (softwarespezifikation.md section 5).</description>
   <!-- TODO: set the real maintainer name and e-mail address. -->
   <maintainer email="todo@example.invalid">RobotROS team</maintainer>
   <!-- TODO: the project license is not decided yet. -->

@@ -1,10 +1,10 @@
 # RobotROS
 
-ROS 2 robot ("Patrizio") that maps a room, shows the map and its position on a Surface touch
+robotROS is a ROS 2 robot that maps a room, shows the map and its position on a Surface touch
 screen, and autonomously carries grid carts from a chosen station to another.
 
 ## Status
-Early development. Implemented so far: the interface package `patrizio_interfaces`
+Early development. Implemented so far: the interface package `robotros_interfaces`
 (messages, services and actions). Everything else follows the order in the specification.
 
 ## Layout
