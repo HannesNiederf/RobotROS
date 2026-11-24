@@ -6,8 +6,8 @@ find_package(ament_cmake_python REQUIRED)
 
 ament_python_install_package(${PROJECT_NAME})
 
-install(DIRECTORY worlds config launch DESTINATION share/${PROJECT_NAME})
-install(PROGRAMS scripts/sim_smoke_check.py scripts/sim_nav_check.py scripts/sim_hw_adapter DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY worlds config launch rviz DESTINATION share/${PROJECT_NAME})
+install(PROGRAMS scripts/sim_smoke_check.py scripts/sim_nav_check.py scripts/sim_helper.py scripts/sim_start_check.py scripts/sim_hw_adapter DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   # QUIET: a machine without ament_cmake_pytest still builds; the test is then reported as missing.

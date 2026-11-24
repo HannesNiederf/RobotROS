@@ -8,6 +8,8 @@ Arguments:
   mode      none (default): only the simulation; mapping: slam_toolbox; nav: map_server, AMCL, Nav2
             (robotros_bringup/launch/navigation.launch.py, spec section 14: `world:=generic mode:=nav`)
   map       map YAML for mode nav
+  auto      true: sim_helper arms the robot once and (mode nav) sets the initial pose (tools/sim_start.sh)
+  rviz      true: RViz with robotros_sim/rviz/robotros.rviz
 """
 
 from launch import LaunchDescription
@@ -16,6 +18,7 @@ from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -86,6 +89,31 @@ def generate_launch_description() -> LaunchDescription:
         condition=IfCondition(PythonExpression(["'", LaunchConfiguration("mode"), "' != 'none'"])),
     )
 
+    helper = Node(
+        package="robotros_sim",
+        executable="sim_helper.py",
+        parameters=[
+            {
+                "use_sim_time": True,
+                "auto_arm": True,
+                "initial_pose": ParameterValue(
+                    PythonExpression(["'", LaunchConfiguration("mode"), "' == 'nav'"]), value_type=bool
+                ),
+            }
+        ],
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("auto")),
+    )
+
+    rviz = Node(
+        package="rviz2",
+        executable="rviz2",
+        arguments=["-d", PathJoinSubstitution([sim_share, "rviz", "robotros.rviz"])],
+        parameters=[{"use_sim_time": True}],
+        output="log",
+        condition=IfCondition(LaunchConfiguration("rviz")),
+    )
+
     return LaunchDescription(
         [
             DeclareLaunchArgument("world", default_value="generic"),
@@ -95,6 +123,8 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("yaw", default_value="0.0"),
             DeclareLaunchArgument("mode", default_value="none"),
             DeclareLaunchArgument("map", default_value=""),
+            DeclareLaunchArgument("auto", default_value="false"),
+            DeclareLaunchArgument("rviz", default_value="false"),
             gz_headless,
             gz_gui,
             description,
@@ -102,5 +132,7 @@ def generate_launch_description() -> LaunchDescription:
             bridge,
             hw_adapter,
             navigation,
+            helper,
+            rviz,
         ]
     )

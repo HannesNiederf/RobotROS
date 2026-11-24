@@ -84,7 +84,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y ros-dev-tools libegl1 libgl1-mesa-dri mesa-utils
+          apt-get install -y ros-dev-tools libegl1 libgl1-mesa-dri mesa-utils xvfb xauth
           rosdep update --rosdistro jazzy
           rosdep install --from-paths ros2_ws/src --ignore-src -r -y --rosdistro jazzy
       - name: Build
@@ -96,6 +96,10 @@ jobs:
         run: tools/sim_smoke.sh build/sim_smoke
       - name: Mapping and navigation in the simulation
         run: tools/sim_nav.sh build/sim_nav
+      - name: Interactive start script (RViz under Xvfb)
+        run: |
+          xvfb-run -a tools/sim_start.sh mapping --check
+          xvfb-run -a tools/sim_start.sh nav build/sim_nav/generic_map.yaml --check
       - name: Keep simulation logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -104,4 +108,5 @@ jobs:
           path: |
             build/sim_smoke
             build/sim_nav
+            build/sim_start
           if-no-files-found: ignore
