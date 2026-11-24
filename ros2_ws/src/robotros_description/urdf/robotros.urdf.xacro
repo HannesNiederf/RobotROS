@@ -12,6 +12,8 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robotros">
   <xacro:arg name="robot_yaml" default="$(find robotros_bringup)/config/robot.yaml"/>
   <xacro:arg name="sim" default="false"/>
+  <!-- Only with sim:=true: factor on the track used by Gazebo's DiffDrive plugin (robotros_sim/config/sim_hw.yaml). -->
+  <xacro:arg name="gz_track_scale" default="1.0"/>
 
   <xacro:property name="cfg" value="${xacro.load_yaml('$(arg robot_yaml)')}"/>
 
@@ -152,6 +154,6 @@
 
   <xacro:if value="$(arg sim)">
     <xacro:include filename="robotros.gazebo.xacro"/>
-    <xacro:robotros_gazebo wheel_r="${wheel_r}" track="${track}"/>
+    <xacro:robotros_gazebo wheel_r="${wheel_r}" track="${track * $(arg gz_track_scale)}"/>
   </xacro:if>
 </robot>

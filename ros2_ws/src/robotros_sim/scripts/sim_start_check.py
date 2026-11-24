@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Check of an interactive session started by tools/sim_start.sh (used with --check in CI).
 
-  mapping: sim_helper armed the robot, /map arrives, /cmd_vel_manual moves the robot.
+  mapping: sim_helper armed the robot, /map arrives, /cmd_vel_manual moves the robot, the wheel odometry
+           (/odom) follows the true motion (/sim/ground_truth) when turning and driving.
   nav:     sim_helper armed the robot and set the initial pose (/amcl_pose), Nav2 is active, a goal on
            /goal_pose (what RViz's "2D Goal Pose" publishes) makes the robot drive.
 Exit code 0 = pass. Durations in simulation time, the wall clock only bounds the waiting.
@@ -26,6 +27,7 @@ from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Trigger
 
 WAIT_S = 240.0
+ODOM_TURN_TOLERANCE = 0.03  # relative yaw error of the wheel odometry on a turn in place
 
 
 class StartCheck(Node):
@@ -117,6 +119,13 @@ class StartCheck(Node):
             print(f"MEASURE drive vx={vx:.2f} wz={wz:+.2f} {secs:.1f}s: yaw odom {math.degrees(yo):+.1f} deg, "
                   f"truth {math.degrees(yt):+.1f} deg, error {math.degrees(yo - yt):+.1f} deg; "
                   f"dist odom {do:.3f} m, truth {dt:.3f} m", flush=True)
+            if vx == 0.0:
+                # Turning in place: the wheel odometry must follow the true turn (gazebo_track_scale, sim_hw.yaml).
+                rel = abs(yo - yt) / max(abs(yt), 1e-6)
+                self.report(rel <= ODOM_TURN_TOLERANCE, f"odometry follows a turn in place at {wz:+.1f} rad/s "
+                            f"(error {100 * rel:.1f} %, limit {100 * ODOM_TURN_TOLERANCE:.0f} %)")
+            else:
+                self.report(abs(do - dt) <= 0.03 * dt + 0.01, f"odometry follows the drive (vx {vx:.2f})")
         rtf = (self.get_clock().now().nanoseconds - sim0) / 1e9 / max(time.monotonic() - wall0, 1e-6)
         ages = sorted(self.scan_ages) or [float("nan")]
         print(f"MEASURE real time factor {rtf:.2f}; /scan stamp age at receipt: median "

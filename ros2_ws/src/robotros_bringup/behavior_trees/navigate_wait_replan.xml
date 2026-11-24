@@ -2,6 +2,10 @@
   softwarespezifikation.md section 7.4: replan at 1 Hz; on failure wait (person_wait_s, 4 s) and clear the local
   costmap, at most 3 retries; a planning failure first clears the global costmap once and plans again.
   The wait time is written here as a literal (4.0 s = person_wait_s start value, spez_parameter_tests.md 2.3).
+  ADR 0002: after waiting and clearing, the recovery backs up recovery_backup_m (0.10 m) at 0.05 m/s (D-29 allows
+  reversing in the recovery) so that a robot stuck at a wall or in a narrow passage gets room to turn and replan.
+  The backup checks the local costmap (behavior_server) and goes through the collision monitor; if it cannot back
+  up (obstacle behind), the retry goes on without it (ForceSuccess).
   Nav2 Jazzy, BehaviorTree.CPP v4 node and port names.
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">
@@ -17,9 +21,12 @@
         </RateController>
         <FollowPath path="{path}" controller_id="FollowPath" error_code_id="{follow_path_error_code}"/>
       </PipelineSequence>
-      <Sequence name="WaitAndClear">
+      <Sequence name="WaitClearBackUp">
         <Wait wait_duration="4.0"/>
         <ClearEntireCostmap name="ClearLocalCostmap" service_name="local_costmap/clear_entirely_local_costmap"/>
+        <ForceSuccess>
+          <BackUp name="RecoveryBackUp" backup_dist="0.10" backup_speed="0.05" time_allowance="8.0"/>
+        </ForceSuccess>
       </Sequence>
     </RecoveryNode>
   </BehaviorTree>
