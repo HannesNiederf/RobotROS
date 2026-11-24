@@ -104,6 +104,10 @@ class NanoBridge(Node):
         self.last_safety: convert.SafetyValues | None = None
         self.last_hub_state = 0
 
+        self.io_last_ms: int | None = None
+        self.io_gap_max_ms = 0
+        self.io_gap_warn_ms = int(float(bc["io_gap_warn_s"]) * 1000)
+
         io_group = MutuallyExclusiveCallbackGroup()
         srv_group = ReentrantCallbackGroup()
         self.pub_odom = self.create_publisher(OdometryMsg, "odom", qos_profile_sensor_data)
@@ -143,6 +147,13 @@ class NanoBridge(Node):
     # ------------------------------------------------------------------- io
     def io_step(self) -> None:
         now = mono_ms()
+        # Diagnostics only: how long the serial loop was not served (scheduling or GIL stalls).
+        if self.io_last_ms is not None:
+            gap = now - self.io_last_ms
+            self.io_gap_max_ms = max(self.io_gap_max_ms, gap)
+            if gap > self.io_gap_warn_ms:
+                self.get_logger().warn(f"serial loop stalled for {gap} ms", throttle_duration_sec=1.0)
+        self.io_last_ms = now
         for dev in self.devices.values():
             self._io_device(dev, now)
 

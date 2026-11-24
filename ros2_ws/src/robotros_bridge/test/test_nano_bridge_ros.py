@@ -85,6 +85,7 @@ def system(tmp_path: Path):  # noqa: ANN201
     try:
         yield probe, seen
     finally:
+        print(f"nano_bridge serial loop: longest gap {node.io_gap_max_ms} ms", flush=True)
         executor.shutdown()
         node.destroy_node()
         probe.destroy_node()
