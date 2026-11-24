@@ -62,12 +62,21 @@ jobs:
           source /opt/ros/jazzy/setup.bash
           cd ros2_ws
           colcon build --event-handlers console_direct+
-      - name: Test
+      - name: Repeat end-to-end bridge test (probe, temporary)
         run: |
           source /opt/ros/jazzy/setup.bash
-          cd ros2_ws
-          colcon test --event-handlers console_direct+
-          colcon test-result --verbose
+          source ros2_ws/install/setup.bash
+          nproc
+          cd ros2_ws/src/robotros_bridge
+          fails=0
+          for i in $(seq 1 25); do
+            if python3 -m pytest test/test_nano_bridge_ros.py -q -s -p no:cacheprovider > /tmp/e2e_$i.log 2>&1; then
+              echo "run $i PASS $(grep -h 'longest gap' /tmp/e2e_$i.log)"
+            else
+              fails=$((fails+1)); echo "run $i FAIL"; grep -E "stalled|longest gap|link lost|EVT 5|assert" /tmp/e2e_$i.log | head -20
+            fi
+          done
+          echo "FAILS: $fails of 25"
       - name: Interface smoke test
         run: tools/smoke_interfaces.sh
 
