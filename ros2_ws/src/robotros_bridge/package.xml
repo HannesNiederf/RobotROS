@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>robotros_bridge</name>
+  <version>0.1.0</version>
+  <description>Serial bridge between the Pi and the Nano boards of robotROS: protocol library (spez_firmware_protokoll.md section 2), later nano_bridge and fake_nano.</description>
+  <!-- TODO: set the real maintainer name and e-mail address. -->
+  <maintainer email="todo@example.invalid">RobotROS team</maintainer>
+  <!-- TODO: the project license is not decided yet. -->
+  <license>TODO</license>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

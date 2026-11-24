@@ -1,0 +1,8 @@
+# Ruff configuration for all Python code in the repository (spec section 16).
+# Target is Python 3.12, the version of Ubuntu 24.04 (Surface and Pi).
+target-version = "py312"
+line-length = 120
+extend-exclude = ["ros2_ws/build", "ros2_ws/install", "ros2_ws/log"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B"]
