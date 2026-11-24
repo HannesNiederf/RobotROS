@@ -1,0 +1,6 @@
+# Obstacle handling (softwarespezifikation.md section 8). Robot geometry (self_mask_boxes) is in robot.yaml.
+scan_masker:
+  range_min: 0.15          # m, section 8.1
+  range_max: 8.0           # m, section 8.1 (= slam max_laser_range)
+  cart_mask_half: 0.17     # m, half size of the cart mask square (section 8.1)
+  cart_mask_margin: 0.03   # m

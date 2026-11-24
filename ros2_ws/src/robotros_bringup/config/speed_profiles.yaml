@@ -1,0 +1,7 @@
+# Speed profiles (spez_parameter_tests.md section 2.2). Placeholders until the motor load test C10.
+# nav2.yaml uses NORMAL as start value; switching profiles at run time comes with the mission node (spec 7.5).
+NORMAL: {v: 0.15, w: 0.6}
+CART: {v: 0.12, w: 0.5}
+DOCK: {v: 0.05, w: 0.3}
+MANUAL: {v: 0.20, w: 0.8}
+MANUAL_SLOW: {v: 0.10, w: 0.4}

@@ -20,8 +20,8 @@ jobs:
         run: python3 tools/check_interfaces.py ros2_ws/src
       - name: Tool and core logic tests
         run: |
-          python3 -m pip install --break-system-packages pytest ruff pyyaml
-          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test -q
+          python3 -m pip install --break-system-packages pytest ruff pyyaml numpy
+          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test -q
       - name: Ruff
         run: ruff check .
       - name: Protocol vectors are up to date
@@ -94,10 +94,14 @@ jobs:
           colcon build --packages-up-to robotros_sim --event-handlers console_direct+
       - name: Simulation smoke test
         run: tools/sim_smoke.sh build/sim_smoke
+      - name: Mapping and navigation in the simulation
+        run: tools/sim_nav.sh build/sim_nav
       - name: Keep simulation logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sim-smoke-logs
-          path: build/sim_smoke
+          name: sim-logs
+          path: |
+            build/sim_smoke
+            build/sim_nav
           if-no-files-found: ignore

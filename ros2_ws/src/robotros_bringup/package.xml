@@ -3,13 +3,32 @@
 <package format="3">
   <name>robotros_bringup</name>
   <version>0.1.0</version>
-  <description>Configuration (YAML) and, later, launch files of robotROS (softwarespezifikation.md section 3.2).</description>
+  <description>Configuration (YAML), behavior trees and launch files of robotROS (softwarespezifikation.md section 3.2).</description>
   <!-- TODO: set the real maintainer name and e-mail address. -->
   <maintainer email="todo@example.invalid">RobotROS team</maintainer>
   <!-- TODO: the project license is not decided yet. -->
   <license>TODO</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- Run-time packages of the launch files. robotros_* packages are not listed: several of them depend on
+       this package for its configuration, and colcon does not allow dependency cycles. -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>twist_mux</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>nav2_amcl</exec_depend>
+  <exec_depend>nav2_controller</exec_depend>
+  <exec_depend>nav2_planner</exec_depend>
+  <exec_depend>nav2_behaviors</exec_depend>
+  <exec_depend>nav2_bt_navigator</exec_depend>
+  <exec_depend>nav2_velocity_smoother</exec_depend>
+  <exec_depend>nav2_collision_monitor</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <exec_depend>nav2_regulated_pure_pursuit_controller</exec_depend>
+  <exec_depend>nav2_smac_planner</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
