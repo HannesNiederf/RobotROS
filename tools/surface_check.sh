@@ -13,6 +13,10 @@
 # localhost-only discovery, so the robot (domain 42) never sees it.
 set -o pipefail
 
+# Everything runs inside main(): bash parses the whole function before running it, so a git checkout
+# that replaces this file while it runs cannot break the running copy.
+main() {
+
 REPO="HannesNiederf/RobotROS"
 ISSUE=9
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -43,14 +47,21 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   git status --short >&2
   exit 1
 fi
-ORIG_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+ORIG_BRANCH="${SURFACE_CHECK_RETURN_TO:-}"
 if [ -n "$BRANCH" ]; then
   echo "== fetching and checking out $BRANCH"
+  ORIG_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
   git fetch origin "$BRANCH" && git checkout "$BRANCH" && git pull --ff-only origin "$BRANCH" || {
     echo "Could not check out $BRANCH." >&2
     exit 1
   }
-else
+  # Continue with the branch's own version of this script.
+  if [ "$POST" -eq 1 ]; then
+    exec env SURFACE_CHECK_RETURN_TO="$ORIG_BRANCH" "$ROOT/tools/surface_check.sh"
+  else
+    exec env SURFACE_CHECK_RETURN_TO="$ORIG_BRANCH" "$ROOT/tools/surface_check.sh" --no-post
+  fi
+elif [ -z "$ORIG_BRANCH" ]; then
   git pull --ff-only || echo "(git pull failed, testing the local state)"
 fi
 
@@ -185,7 +196,7 @@ if [ "$(wc -c < "$REPORT")" -gt 60000 ]; then
   mv "$REPORT.cut" "$REPORT"
 fi
 
-if [ -n "$BRANCH" ] && [ "$ORIG_BRANCH" != "$BRANCH" ]; then
+if [ -n "$ORIG_BRANCH" ] && [ "$ORIG_BRANCH" != "$(git rev-parse --abbrev-ref HEAD)" ]; then
   git checkout -q "$ORIG_BRANCH" && echo "(back on $ORIG_BRANCH)"
 fi
 
@@ -200,4 +211,8 @@ if [ "$POST" -eq 1 ]; then
   fi
 fi
 if [ "$FAILED" -eq 0 ]; then echo "RESULT: PASS"; else echo "RESULT: FAIL"; fi
-exit "$FAILED"
+return "$FAILED"
+}
+
+main "$@"
+exit $?
