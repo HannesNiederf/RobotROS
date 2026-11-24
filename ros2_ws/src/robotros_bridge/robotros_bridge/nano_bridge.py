@@ -108,7 +108,7 @@ class NanoBridge(Node):
         self.io_gap_max_ms = 0
         self.io_gap_warn_ms = int(float(bc["io_gap_warn_s"]) * 1000)
 
-        io_group = MutuallyExclusiveCallbackGroup()
+        cmd_group = MutuallyExclusiveCallbackGroup()
         srv_group = ReentrantCallbackGroup()
         self.pub_odom = self.create_publisher(OdometryMsg, "odom", qos_profile_sensor_data)
         self.pub_joints = self.create_publisher(JointState, "joint_states", qos_profile_sensor_data)
@@ -118,16 +118,24 @@ class NanoBridge(Node):
         self.pub_power = self.create_publisher(PowerState, "hw/power", 10)
         self.pub_hub = self.create_publisher(HubState, "hw/hub_state", 10)
         self.tf = TransformBroadcaster(self) if self.get_parameter("publish_tf").value else None
-        self.create_subscription(Twist, "cmd_vel", self.on_cmd_vel, 10, callback_group=io_group)
-        self.create_subscription(HubCommand, "hw/cmd/hub", self.on_hub, 10, callback_group=io_group)
-        self.create_subscription(LedCommand, "hw/cmd/led", self.on_led, 10, callback_group=io_group)
-        self.create_subscription(BuzzerCommand, "hw/cmd/buzzer", self.on_buzzer, 10, callback_group=io_group)
+        self.create_subscription(Twist, "cmd_vel", self.on_cmd_vel, 10, callback_group=cmd_group)
+        self.create_subscription(HubCommand, "hw/cmd/hub", self.on_hub, 10, callback_group=cmd_group)
+        self.create_subscription(LedCommand, "hw/cmd/led", self.on_led, 10, callback_group=cmd_group)
+        self.create_subscription(BuzzerCommand, "hw/cmd/buzzer", self.on_buzzer, 10, callback_group=cmd_group)
         self.create_service(SetArm, "hw/set_arm", self.on_set_arm, callback_group=srv_group)
         self.create_service(SetRelay, "hw/set_relay", self.on_set_relay, callback_group=srv_group)
-        self.create_timer(0.005, self.io_step, callback_group=io_group)
-        self.create_timer(1.0 / float(bc["vel_rate_hz"]), self.send_vel, callback_group=io_group)
-        self.create_timer(1.0 / float(bc["ping_rate_hz"]), self.send_ping, callback_group=io_group)
-        self.create_timer(1.0 / float(bc["hub_rate_hz"]), self.send_hub, callback_group=io_group)
+
+        # Serial I/O and the periodic $VEL/$PING/$HUB run in a thread of their own, not in executor timers:
+        # under CPU load the executor left the serial loop unserved for up to 0.8 s (CI, colcon test in
+        # parallel), which tripped the Nano watchdog (EVT 50) and the 300 ms link timeout.
+        self.vel_period_ms = 1000.0 / float(bc["vel_rate_hz"])
+        self.ping_period_ms = 1000.0 / float(bc["ping_rate_hz"])
+        self.hub_period_ms = 1000.0 / float(bc["hub_rate_hz"])
+        self.io_period_s = float(bc["io_period_s"])
+        self.cmd_lock = threading.Lock()  # hub_cmd is set by the executor and read by the I/O thread
+        self._io_stop = threading.Event()
+        self._io_thread = threading.Thread(target=self._io_loop, name="nano_bridge_io", daemon=True)
+        self._io_thread.start()
 
     # ------------------------------------------------------------- routing
     def _device_with(self, role: p.Role) -> Device | None:
@@ -145,6 +153,39 @@ class NanoBridge(Node):
             return dev.link.send_command(name, **fields)
 
     # ------------------------------------------------------------------- io
+    def _io_loop(self) -> None:
+        next_vel = next_ping = next_hub = float(mono_ms())
+        while not self._io_stop.is_set():
+            try:
+                now = float(mono_ms())
+                # After a stall the next send is scheduled from now: no burst of queued telegrams.
+                if now >= next_vel:
+                    self.send_vel()
+                    next_vel = max(next_vel + self.vel_period_ms, now)
+                if now >= next_ping:
+                    self.send_ping()
+                    next_ping = max(next_ping + self.ping_period_ms, now)
+                if now >= next_hub:
+                    self.send_hub()
+                    next_hub = max(next_hub + self.hub_period_ms, now)
+                self.io_step()
+            except Exception as err:  # keep serving the link; the Nano watchdog covers a dead loop
+                self.get_logger().error(f"serial I/O loop: {err!r}", throttle_duration_sec=1.0)
+            self._io_stop.wait(self.io_period_s)
+
+    def destroy_node(self) -> None:
+        self._io_stop.set()
+        if self._io_thread.is_alive():
+            self._io_thread.join(timeout=1.0)
+        for dev in self.devices.values():
+            if dev.port is not None:
+                try:
+                    dev.port.close()
+                except (serial.SerialException, OSError):
+                    pass
+                dev.port = None
+        super().destroy_node()
+
     def io_step(self) -> None:
         now = mono_ms()
         # Diagnostics only: how long the serial loop was not served (scheduling or GIL stalls).
@@ -367,11 +408,16 @@ class NanoBridge(Node):
             self._command(p.Role.AUX, "PING", seq=self.ping_seq)
 
     def on_hub(self, msg: HubCommand) -> None:
-        self.hub_cmd = msg
-        self.hub_cmd_ms = mono_ms()
+        with self.cmd_lock:
+            self.hub_cmd = msg
+            self.hub_cmd_ms = mono_ms()
         self.send_hub()
 
     def send_hub(self) -> None:
+        with self.cmd_lock:
+            self._send_hub_locked()
+
+    def _send_hub_locked(self) -> None:
         cmd = self.hub_cmd
         if cmd is None:
             return
