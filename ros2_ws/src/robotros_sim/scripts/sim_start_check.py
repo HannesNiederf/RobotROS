@@ -22,6 +22,7 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from robotros_interfaces.msg import SafetyState
+from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Trigger
 
 WAIT_S = 240.0
@@ -43,6 +44,10 @@ class StartCheck(Node):
         self.create_subscription(
             Odometry, "/sim/ground_truth", lambda m: setattr(self, "truth", m), qos_profile_sensor_data
         )
+        self.odom: Odometry | None = None
+        self.create_subscription(Odometry, "/odom", lambda m: setattr(self, "odom", m), qos_profile_sensor_data)
+        self.scan_ages: list[float] = []
+        self.create_subscription(LaserScan, "/scan", self._on_scan, qos_profile_sensor_data)
         self.manual = self.create_publisher(Twist, "/cmd_vel_manual", 10)
         self.goal = self.create_publisher(PoseStamped, "/goal_pose", 10)
         self.failures = 0
@@ -58,6 +63,64 @@ class StartCheck(Node):
             if cond():
                 return True
         return False
+
+    def _on_scan(self, msg: LaserScan) -> None:
+        now = self.get_clock().now().nanoseconds
+        stamp = msg.header.stamp.sec * 1_000_000_000 + msg.header.stamp.nanosec
+        if now > 0:
+            self.scan_ages.append((now - stamp) / 1e9)
+
+    @staticmethod
+    def yaw_of(msg: Odometry) -> float:
+        q = msg.pose.pose.orientation
+        return math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+
+    def drive(self, vx: float, wz: float, sim_s: float) -> tuple[float, float, float, float]:
+        """Drive with (vx, wz) for sim_s; return unwrapped yaw change and distance from /odom and the truth."""
+        twist = Twist()
+        twist.linear.x, twist.angular.z = vx, wz
+        last = {"odom": self.yaw_of(self.odom), "truth": self.yaw_of(self.truth)}
+        acc = {"odom": 0.0, "truth": 0.0}
+        p_o0, p_t0 = self.odom.pose.pose.position, self.truth.pose.pose.position
+        o0, t0 = (p_o0.x, p_o0.y), (p_t0.x, p_t0.y)
+        end = self.get_clock().now() + Duration(seconds=sim_s)
+        deadline = time.monotonic() + 120.0
+        settle = None
+        while time.monotonic() < deadline:
+            now = self.get_clock().now()
+            if now < end:
+                self.manual.publish(twist)
+            else:
+                self.manual.publish(Twist())
+                settle = settle or now + Duration(seconds=1.5)
+                if now > settle:
+                    break
+            self.spin_until(lambda: False, 0.02)
+            for key, msg in (("odom", self.odom), ("truth", self.truth)):
+                y = self.yaw_of(msg)
+                acc[key] += math.atan2(math.sin(y - last[key]), math.cos(y - last[key]))
+                last[key] = y
+        p_o, p_t = self.odom.pose.pose.position, self.truth.pose.pose.position
+        return (acc["odom"], acc["truth"], math.hypot(p_o.x - o0[0], p_o.y - o0[1]),
+                math.hypot(p_t.x - t0[0], p_t.y - t0[1]))
+
+    def odom_consistency(self) -> None:
+        """Measurement: does the simulated wheel odometry follow the true motion?"""
+        ok = self.spin_until(lambda: self.odom is not None, 30.0)
+        self.report(ok, "/odom received")
+        if not ok:
+            return
+        wall0, sim0 = time.monotonic(), self.get_clock().now().nanoseconds
+        for vx, wz, secs in ((0.0, 0.6, 2 * math.pi / 0.6), (0.0, -0.3, 2 * math.pi / 0.3),
+                             (0.15, 0.0, 3.0), (0.10, 0.4, 4.0)):
+            yo, yt, do, dt = self.drive(vx, wz, secs)
+            print(f"MEASURE drive vx={vx:.2f} wz={wz:+.2f} {secs:.1f}s: yaw odom {math.degrees(yo):+.1f} deg, "
+                  f"truth {math.degrees(yt):+.1f} deg, error {math.degrees(yo - yt):+.1f} deg; "
+                  f"dist odom {do:.3f} m, truth {dt:.3f} m", flush=True)
+        rtf = (self.get_clock().now().nanoseconds - sim0) / 1e9 / max(time.monotonic() - wall0, 1e-6)
+        ages = sorted(self.scan_ages) or [float("nan")]
+        print(f"MEASURE real time factor {rtf:.2f}; /scan stamp age at receipt: median "
+              f"{ages[len(ages) // 2]:.3f} s, max {ages[-1]:.3f} s, n={len(self.scan_ages)}", flush=True)
 
     def moved_from(self, x0: float, y0: float) -> float:
         p = self.truth.pose.pose.position
@@ -85,6 +148,7 @@ class StartCheck(Node):
             self.manual.publish(Twist())
             d = self.moved_from(x0, y0)
             self.report(d > 0.15, f"/cmd_vel_manual (keyboard path) moves the robot ({d:.2f} m)")
+            self.odom_consistency()
         else:
             ok = self.spin_until(lambda: self.amcl is not None, WAIT_S)
             self.report(ok, "sim_helper set the initial pose (/amcl_pose received)")
