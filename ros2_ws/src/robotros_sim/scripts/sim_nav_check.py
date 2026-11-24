@@ -188,7 +188,38 @@ class NavCheck(Node):
         return 1 if self.failures else 0
 
     # ------------------------------------------------------------------ nav
-    def navigate(self, gx: float, gy: float, gyaw: float) -> int:
+    def one_goal(self, run: int, gx: float, gy: float, gyaw: float) -> tuple[float, float, float] | None:
+        """Send one goal; return (true position error, true heading error, AMCL-vs-truth) or None."""
+        goal = NavigateToPose.Goal()
+        goal.pose.header.frame_id = "map"
+        goal.pose.header.stamp = self.sim_now().to_msg()
+        goal.pose.pose.position.x, goal.pose.pose.position.y = gx, gy
+        goal.pose.pose.orientation.z, goal.pose.pose.orientation.w = math.sin(gyaw / 2), math.cos(gyaw / 2)
+        t0 = self.sim_now()
+        send = self.nav.send_goal_async(goal)
+        self.spin_until(send.done, 30.0)
+        handle = send.result() if send.done() else None
+        self.report(handle is not None and handle.accepted, f"run {run}: goal ({gx}, {gy}, {gyaw:.2f}) accepted")
+        if handle is None or not handle.accepted:
+            return None
+        result = handle.get_result_async()
+        self.spin_until(result.done, 600.0)
+        status = result.result().status if result.done() else None
+        took = (self.sim_now() - t0).nanoseconds / 1e9
+        self.report(status == 4, f"run {run}: NavigateToPose SUCCEEDED (status {status}) in {took:.1f} s sim")
+        self.sim_sleep(1.0)
+        self.amcl_vs_truth(f"run {run} end")
+        q = self.truth.pose.pose
+        err = math.hypot(q.position.x - gx, q.position.y - gy)
+        dyaw = abs(math.atan2(math.sin(yaw_of(q.orientation) - gyaw), math.cos(yaw_of(q.orientation) - gyaw)))
+        loc = math.inf
+        if self.amcl is not None:
+            a = self.amcl.pose.pose.position
+            loc = math.hypot(a.x - q.position.x, a.y - q.position.y)
+        print(f"info  run {run}: true error {err:.3f} m, {math.degrees(dyaw):.1f} deg", flush=True)
+        return err, dyaw, loc
+
+    def navigate(self, goals: list[tuple[float, float, float]], runs: int, acceptance: bool) -> int:
         if not self.start():
             return 1
         p = self.truth.pose.pose
@@ -221,32 +252,27 @@ class NavCheck(Node):
         self.report(ok, "NavigateToPose action server available")
         if not ok:
             return 1
-        self.amcl_vs_truth("before the goal")
-        goal = NavigateToPose.Goal()
-        goal.pose.header.frame_id = "map"
-        goal.pose.header.stamp = self.sim_now().to_msg()
-        goal.pose.pose.position.x, goal.pose.pose.position.y = gx, gy
-        goal.pose.pose.orientation.z, goal.pose.pose.orientation.w = math.sin(gyaw / 2), math.cos(gyaw / 2)
-        t0 = self.sim_now()
-        send = self.nav.send_goal_async(goal)
-        self.spin_until(send.done, 30.0)
-        handle = send.result() if send.done() else None
-        self.report(handle is not None and handle.accepted, "goal accepted")
-        if handle is None or not handle.accepted:
-            return 1
-        result = handle.get_result_async()
-        self.spin_until(result.done, 600.0)
-        status = result.result().status if result.done() else None
-        took = (self.sim_now() - t0).nanoseconds / 1e9
-        self.report(status == 4, f"NavigateToPose succeeded (status {status}, 4 = SUCCEEDED) in {took:.1f} s sim")
-        self.sim_sleep(1.0)
-        self.amcl_vs_truth("at the end")
-        q = self.truth.pose.pose
-        err = math.hypot(q.position.x - gx, q.position.y - gy)
-        dyaw = abs(math.atan2(math.sin(yaw_of(q.orientation) - gyaw), math.cos(yaw_of(q.orientation) - gyaw)))
-        # Acceptance criterion: 0.10 m / 10 deg (spez_parameter_tests.md, spec 7.2 goal checker is tighter).
-        self.report(err <= 0.10, f"true position error {err:.3f} m (<= 0.10)")
-        self.report(dyaw <= math.radians(10), f"true heading error {math.degrees(dyaw):.1f} deg (<= 10)")
+        self.amcl_vs_truth("before the goals")
+        within = 0
+        for run in range(runs):
+            gx, gy, gyaw = goals[run % len(goals)]
+            res = self.one_goal(run + 1, gx, gy, gyaw)
+            if res is None:
+                return 1
+            err, dyaw, loc = res
+            # spez_parameter_tests.md M1-03: end error <= 0.10 m and <= 10 deg in >= 9 of 10 runs.
+            m103 = err <= 0.10 and dyaw <= math.radians(10)
+            within += int(m103)
+            print(f"info  run {run + 1}: M1-03 limit 0.10 m / 10 deg {'met' if m103 else 'NOT met'}", flush=True)
+            if not acceptance:
+                # Single CI run: gross regression limits (chosen here, wider than M1-03, which is a 9-of-10 test).
+                self.report(err <= 0.15, f"run {run + 1}: true position error {err:.3f} m (<= 0.15)")
+                deg = math.degrees(dyaw)
+                self.report(dyaw <= math.radians(10), f"run {run + 1}: true heading error {deg:.1f} deg (<= 10)")
+                self.report(loc <= 0.10, f"run {run + 1}: AMCL vs truth {loc:.3f} m (<= 0.10)")
+        if acceptance:
+            text = f"M1-03 in simulation: {within} of {runs} runs within 0.10 m / 10 deg (>= 90 %)"
+            self.report(within >= math.ceil(0.9 * runs), text)
         return 1 if self.failures else 0
 
 
@@ -256,12 +282,19 @@ def main() -> int:
     m = sub.add_parser("mapping")
     m.add_argument("--map-out", required=True)
     n = sub.add_parser("nav")
-    n.add_argument("--goal", nargs=3, type=float, required=True, metavar=("X", "Y", "YAW"))
+    n.add_argument("--goal", nargs=3, type=float, action="append", required=True, metavar=("X", "Y", "YAW"),
+                   help="repeat for several goals; runs cycle through them")
+    n.add_argument("--runs", type=int, default=0, help="number of goals to drive (default: one per --goal)")
+    n.add_argument("--acceptance", action="store_true", help="M1-03 rule: >= 90 %% of runs within 0.10 m / 10 deg")
     args = ap.parse_args()
     rclpy.init()
     node = NavCheck()
     try:
-        code = node.mapping(args.map_out) if args.phase == "mapping" else node.navigate(*args.goal)
+        if args.phase == "mapping":
+            code = node.mapping(args.map_out)
+        else:
+            goals = [tuple(g) for g in args.goal]
+            code = node.navigate(goals, args.runs or len(goals), args.acceptance)
     finally:
         node.destroy_node()
         rclpy.try_shutdown()
