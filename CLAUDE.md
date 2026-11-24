@@ -11,6 +11,9 @@ two Arduino Nano Every handle real-time and safety, the Surface shows a web UI.
 - Never run anything that moves motors, flashes firmware or switches relays on the real robot
   without the owner's explicit OK for that command. Hardware tests are done by the owner.
 - Never disable or bypass safety logic (E-stop, watchdog, cliff and bumper handling) to make a test pass.
+- `.claude/settings.json` holds deny/ask rules for sudo, firmware upload, serial devices, ROS commands that
+  trigger actions and the hardware tools (see `docs/claude_code_permissions.md`). Do not weaken or work around
+  them; changes need the owner's OK. Name new hardware scripts so that an ask rule covers them.
 
 ## Language
 - Code, identifiers, comments, commit messages and PR text: English.
