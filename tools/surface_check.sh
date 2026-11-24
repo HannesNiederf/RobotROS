@@ -13,6 +13,10 @@
 # localhost-only discovery, so the robot (domain 42) never sees it.
 set -o pipefail
 
+# Everything runs inside main(): bash parses the whole function before running it, so a git checkout
+# that replaces this file while it runs cannot break the running copy.
+main() {
+
 REPO="HannesNiederf/RobotROS"
 ISSUE=9
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -43,14 +47,21 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   git status --short >&2
   exit 1
 fi
-ORIG_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+ORIG_BRANCH="${SURFACE_CHECK_RETURN_TO:-}"
 if [ -n "$BRANCH" ]; then
   echo "== fetching and checking out $BRANCH"
+  ORIG_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
   git fetch origin "$BRANCH" && git checkout "$BRANCH" && git pull --ff-only origin "$BRANCH" || {
     echo "Could not check out $BRANCH." >&2
     exit 1
   }
-else
+  # Continue with the branch's own version of this script.
+  if [ "$POST" -eq 1 ]; then
+    exec env SURFACE_CHECK_RETURN_TO="$ORIG_BRANCH" "$ROOT/tools/surface_check.sh"
+  else
+    exec env SURFACE_CHECK_RETURN_TO="$ORIG_BRANCH" "$ROOT/tools/surface_check.sh" --no-post
+  fi
+elif [ -z "$ORIG_BRANCH" ]; then
   git pull --ff-only || echo "(git pull failed, testing the local state)"
 fi
 
@@ -97,6 +108,8 @@ do_env() (
   echo "RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-unset}"
   (ros_env && gz sim --versions) 2>&1 | head -1 | sed 's/^/gz sim: /'
   python3 --version
+  python3 -m pytest --version 2>&1 | head -1
+  echo "ROS environment inherited from the calling shell: ${ROS_DISTRO:-no}${PYTHONPATH:+ (PYTHONPATH set)}"
   python3 -c "import serial; print('pyserial', serial.__version__)" 2>&1 | tail -1
   for tool in cmake g++ clang-format ruff pio; do
     if have "$tool"; then echo "$tool: $("$tool" --version 2>&1 | head -1)"; else echo "$tool: not installed"; fi
@@ -106,7 +119,12 @@ do_env() (
 
 do_build() ( ros_env && cd ros2_ws && colcon build --event-handlers console_direct+ )
 do_test() ( ros_env && cd ros2_ws && colcon test --event-handlers console_direct+ && colcon test-result --verbose )
-do_pytest() { python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test -q; }
+# These tests need no ROS. Run them without a ROS environment that may be inherited from the calling shell
+# (PYTHONPATH, pytest plugins of ROS), and print the header and a summary of everything not passed.
+do_pytest() {
+  env -u PYTHONPATH -u AMENT_PREFIX_PATH PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+    python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test -ra -p no:cacheprovider
+}
 do_fw() {
   cmake -S firmware/test/host -B "$OUT/fw_build" -DWITH_SANITIZERS=ON && cmake --build "$OUT/fw_build" &&
     ctest --test-dir "$OUT/fw_build" --output-on-failure
@@ -178,7 +196,7 @@ if [ "$(wc -c < "$REPORT")" -gt 60000 ]; then
   mv "$REPORT.cut" "$REPORT"
 fi
 
-if [ -n "$BRANCH" ] && [ "$ORIG_BRANCH" != "$BRANCH" ]; then
+if [ -n "$ORIG_BRANCH" ] && [ "$ORIG_BRANCH" != "$(git rev-parse --abbrev-ref HEAD)" ]; then
   git checkout -q "$ORIG_BRANCH" && echo "(back on $ORIG_BRANCH)"
 fi
 
@@ -193,4 +211,8 @@ if [ "$POST" -eq 1 ]; then
   fi
 fi
 if [ "$FAILED" -eq 0 ]; then echo "RESULT: PASS"; else echo "RESULT: FAIL"; fi
-exit "$FAILED"
+return "$FAILED"
+}
+
+main "$@"
+exit $?

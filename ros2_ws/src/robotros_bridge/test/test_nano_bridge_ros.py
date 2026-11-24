@@ -6,6 +6,7 @@ Needs ROS 2 (rclpy, robotros_interfaces) and pyserial; skipped otherwise. Runs i
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
 import sys
 import threading
@@ -22,13 +23,10 @@ pytest.importorskip("robotros_interfaces")
 from geometry_msgs.msg import Twist  # noqa: E402
 from nav_msgs.msg import Odometry  # noqa: E402
 from rclpy.executors import MultiThreadedExecutor  # noqa: E402
-from rclpy.parameter import Parameter  # noqa: E402
 from robotros_interfaces.msg import PowerState, SafetyState  # noqa: E402
 from robotros_interfaces.srv import SetArm, SetRelay  # noqa: E402
 
 PKG_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PKG_ROOT))
-from robotros_bridge.nano_bridge import NanoBridge  # noqa: E402
 
 CONFIG = PKG_ROOT.parent / "robotros_bringup" / "config"
 
@@ -64,35 +62,52 @@ def system(tmp_path: Path):  # noqa: ANN201
     bridge_yaml = tmp_path / "bridge.yaml"
     bridge_yaml.write_text(yaml.safe_dump(bridge_cfg))
 
-    rclpy.init()
-    node = NanoBridge(
-        parameter_overrides=[
-            Parameter("bridge_yaml", value=str(bridge_yaml)),
-            Parameter("robot_yaml", value=str(CONFIG / "robot.yaml")),
-            Parameter("firmware_yaml", value=str(CONFIG / "firmware.yaml")),
-        ]
+    # The bridge runs in its own process, as on the robot: test code and probe node do not share its
+    # interpreter (GIL), so loop stalls seen here are the bridge's own.
+    bridge_log = tmp_path / "nano_bridge.log"
+    log_file = bridge_log.open("w")
+    bridge = subprocess.Popen(
+        [
+            sys.executable, "-m", "robotros_bridge.nano_bridge", "--ros-args",
+            "-p", f"bridge_yaml:={bridge_yaml}",
+            "-p", f"robot_yaml:={CONFIG / 'robot.yaml'}",
+            "-p", f"firmware_yaml:={CONFIG / 'firmware.yaml'}",
+        ],
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+        env=env,
     )
+    procs.insert(0, bridge)
+
+    rclpy.init()
     probe = rclpy.create_node("bridge_probe")
     seen: dict[str, list] = {"safety": [], "odom": [], "power": []}
     probe.create_subscription(SafetyState, "hw/safety", seen["safety"].append, 10)
     probe.create_subscription(Odometry, "odom", seen["odom"].append, rclpy.qos.qos_profile_sensor_data)
     probe.create_subscription(PowerState, "hw/power", seen["power"].append, 10)
-    executor = MultiThreadedExecutor(num_threads=6)
-    executor.add_node(node)
+    executor = MultiThreadedExecutor(num_threads=2)
     executor.add_node(probe)
     spinner = threading.Thread(target=executor.spin, daemon=True)
     spinner.start()
     try:
         yield probe, seen
     finally:
-        print(f"nano_bridge serial loop: longest gap {node.io_gap_max_ms} ms", flush=True)
         executor.shutdown()
-        node.destroy_node()
         probe.destroy_node()
         rclpy.try_shutdown()
-        for proc in procs:
+        bridge.send_signal(signal.SIGINT)
+        try:
+            bridge.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            bridge.kill()
+        for proc in procs[1:]:
             proc.terminate()
             proc.wait(timeout=5)
+        log_file.close()
+        lines = bridge_log.read_text().splitlines()
+        notes = [ln for ln in lines if any(k in ln for k in ("stalled", "longest gap", "link lost", "EVT 5", "Error"))]
+        print("\n".join(["---- nano_bridge (selected lines) ----", *notes, "---- nano_bridge (last 15 lines) ----",
+                         *lines[-15:]]), flush=True)
 
 
 def call(probe, srv_type, name: str, request, timeout: float = 5.0):  # noqa: ANN001, ANN201

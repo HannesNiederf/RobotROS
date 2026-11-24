@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 import os
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -20,7 +21,7 @@ from builtin_interfaces.msg import Time
 from geometry_msgs.msg import TransformStamped, Twist
 from nav_msgs.msg import Odometry as OdometryMsg
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
-from rclpy.executors import MultiThreadedExecutor
+from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from robotros_interfaces.msg import (
@@ -180,6 +181,7 @@ class NanoBridge(Node):
         self._io_stop.set()
         if self._io_thread.is_alive():
             self._io_thread.join(timeout=1.0)
+        print(f"nano_bridge: serial loop longest gap {self.io_gap_max_ms} ms", file=sys.stderr, flush=True)
         for dev in self.devices.values():
             if dev.port is not None:
                 try:
@@ -508,7 +510,7 @@ def main(args: list[str] | None = None) -> None:
     executor.add_node(node)
     try:
         executor.spin()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
