@@ -47,12 +47,14 @@ class NavCheck(Node):
         self.map: OccupancyGrid | None = None
         self.truth: Odometry | None = None
         self.safety: SafetyState | None = None
+        self.amcl: PoseWithCovarianceStamped | None = None
         latched = QoSProfile(
             depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE
         )
         self.create_subscription(OccupancyGrid, "/map", self._on_map, latched)
         self.create_subscription(Odometry, "/sim/ground_truth", self._on_truth, qos_profile_sensor_data)
         self.create_subscription(SafetyState, "/hw/safety", self._on_safety, 10)
+        self.create_subscription(PoseWithCovarianceStamped, "/amcl_pose", self._on_amcl, latched)
         self.manual = self.create_publisher(Twist, "/cmd_vel_manual", 10)
         self.initial = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
         self.arm_client = self.create_client(SetArm, "/hw/set_arm")
@@ -66,6 +68,24 @@ class NavCheck(Node):
 
     def _on_safety(self, msg: SafetyState) -> None:
         self.safety = msg
+
+    def _on_amcl(self, msg: PoseWithCovarianceStamped) -> None:
+        self.amcl = msg
+
+    def amcl_vs_truth(self, label: str) -> None:
+        """Diagnostics: AMCL pose (map frame) against the ground truth (world frame)."""
+        if self.amcl is None or self.truth is None:
+            print(f"info  {label}: no AMCL pose yet", flush=True)
+            return
+        a, t = self.amcl.pose.pose, self.truth.pose.pose
+        cov = self.amcl.pose.covariance
+        print(
+            f"info  {label}: AMCL ({a.position.x:.3f}, {a.position.y:.3f}, {yaw_of(a.orientation):.3f}) "
+            f"truth ({t.position.x:.3f}, {t.position.y:.3f}, {yaw_of(t.orientation):.3f}) "
+            f"diff {math.hypot(a.position.x - t.position.x, a.position.y - t.position.y):.3f} m, "
+            f"sigma_xy {math.sqrt(max(cov[0], cov[7])):.3f} m",
+            flush=True,
+        )
 
     def report(self, ok: bool, text: str) -> None:
         print(("ok    " if ok else "FAIL  ") + text, flush=True)
@@ -201,6 +221,7 @@ class NavCheck(Node):
         self.report(ok, "NavigateToPose action server available")
         if not ok:
             return 1
+        self.amcl_vs_truth("before the goal")
         goal = NavigateToPose.Goal()
         goal.pose.header.frame_id = "map"
         goal.pose.header.stamp = self.sim_now().to_msg()
@@ -219,6 +240,7 @@ class NavCheck(Node):
         took = (self.sim_now() - t0).nanoseconds / 1e9
         self.report(status == 4, f"NavigateToPose succeeded (status {status}, 4 = SUCCEEDED) in {took:.1f} s sim")
         self.sim_sleep(1.0)
+        self.amcl_vs_truth("at the end")
         q = self.truth.pose.pose
         err = math.hypot(q.position.x - gx, q.position.y - gy)
         dyaw = abs(math.atan2(math.sin(yaw_of(q.orientation) - gyaw), math.cos(yaw_of(q.orientation) - gyaw)))
