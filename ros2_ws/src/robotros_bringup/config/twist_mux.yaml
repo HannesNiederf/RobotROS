@@ -5,6 +5,7 @@
 # monitor output (docking runs behind the collision monitor, spec 10).
 twist_mux_a:
   ros__parameters:
+    use_stamped: false   # the chain uses geometry_msgs/Twist (spec 5.3); twist_mux 4.x defaults to TwistStamped
     topics:
       manual:
         topic: cmd_vel_manual
@@ -16,6 +17,7 @@ twist_mux_a:
         priority: 10
 twist_mux_b:
   ros__parameters:
+    use_stamped: false
     topics:
       collision_monitor:
         topic: cmd_vel_cm

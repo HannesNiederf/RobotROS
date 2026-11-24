@@ -106,10 +106,15 @@ class NavCheck(Node):
         if not ok:
             return False
         ok = self.arm_client.wait_for_service(timeout_sec=60.0)
-        future = self.arm_client.call_async(SetArm.Request(arm=True)) if ok else None
-        if future is not None:
+        res = None
+        # sim_hw_adapter answers "not armed" until its own clock runs; retry like an operator would.
+        for _ in range(20 if ok else 0):
+            future = self.arm_client.call_async(SetArm.Request(arm=True))
             self.spin_until(future.done, 10.0)
-        res = future.result() if future is not None and future.done() else None
+            res = future.result() if future.done() else None
+            if res is not None and res.success:
+                break
+            self.sim_sleep(1.0)
         self.report(res is not None and res.success, f"/hw/set_arm -> ARMED (got {res and (res.success, res.state)})")
         self.sim_sleep(0.5)
         return res is not None and res.success
