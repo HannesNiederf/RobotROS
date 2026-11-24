@@ -93,9 +93,11 @@ def test_walled_cart_open_towards_room(world: ET.Element) -> None:
 def test_bridge_topics() -> None:
     entries = yaml.safe_load((PKG / "config" / "gz_bridge.yaml").read_text())
     ros = {e["ros_topic_name"]: e for e in entries}
-    assert set(ros) == {"/clock", "/scan", "/odom", "/tf", "/joint_states", "/cmd_vel"}
-    assert ros["/cmd_vel"]["direction"] == "ROS_TO_GZ"
-    assert all(e["direction"] == "GZ_TO_ROS" for k, e in ros.items() if k != "/cmd_vel")
+    assert set(ros) == {"/clock", "/scan", "/odom", "/tf", "/joint_states", "/sim/cmd_vel", "/sim/ground_truth"}
+    # Only sim_hw_adapter drives Gazebo: the ROS /cmd_vel is not bridged (it goes through the simulated Nano).
+    assert "/cmd_vel" not in ros
+    assert ros["/sim/cmd_vel"]["direction"] == "ROS_TO_GZ"
+    assert all(e["direction"] == "GZ_TO_ROS" for k, e in ros.items() if k != "/sim/cmd_vel")
 
 
 def test_bridge_matches_gazebo_topics() -> None:
@@ -103,4 +105,4 @@ def test_bridge_matches_gazebo_topics() -> None:
     used = {el.text for tag in ("topic", "odom_topic", "tf_topic") for el in gazebo.iter(tag)}
     entries = yaml.safe_load((PKG / "config" / "gz_bridge.yaml").read_text())
     bridged = {e["gz_topic_name"] for e in entries} - {"/clock"}
-    assert used == bridged
+    assert used - {"/sim/ground_truth_tf"} == bridged  # the ground-truth TF stays inside Gazebo

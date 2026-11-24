@@ -65,6 +65,14 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
     )
 
+    # Stands in for nano_bridge and both Nanos: /cmd_vel -> simulated safety logic -> /sim/cmd_vel -> Gazebo.
+    hw_adapter = Node(
+        package="robotros_sim",
+        executable="sim_hw_adapter",
+        parameters=[{"use_sim_time": True, "world_sdf": world_file}],
+        output="screen",
+    )
+
     return LaunchDescription(
         [
             DeclareLaunchArgument("world", default_value="generic"),
@@ -77,5 +85,6 @@ def generate_launch_description() -> LaunchDescription:
             description,
             spawn,
             bridge,
+            hw_adapter,
         ]
     )
