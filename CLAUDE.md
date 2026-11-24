@@ -39,8 +39,8 @@ Decisions that change the spec are recorded as ADRs in `docs/adr/`.
 ## Layout
 ```
 ros2_ws/src/   ROS packages (spec section 3.2). Implemented so far: robotros_interfaces,
-               robotros_bridge (core/protocol.py, core/safety.py, core/fake_nano.py + `fake_nano` pty runner;
-               nano_bridge node not yet)
+               robotros_bridge (core/: protocol, safety, fake_nano, kinematics, link, convert;
+               nodes/scripts: nano_bridge, fake_nano), robotros_bringup (config/*.yaml only so far)
 firmware/      Nano firmware (PlatformIO) - not started
 web_ui/        Browser UI (vanilla JS, no build step) - not started
 deploy/        systemd, udev, sudoers, chrony, cyclonedds.xml - not started
@@ -62,6 +62,8 @@ Protocol golden vectors: `firmware/test/vectors/protocol_vectors.json`, generate
 Safety state machine table: `firmware/test/vectors/safety_fsm.csv` (spec FW section 5.1); fake_nano and the
 firmware host tests are tested row by row against it. Changing it is a safety change (second pair of eyes).
 Run the simulated Nano: `ros2 run robotros_bridge fake_nano --role drive` (prints the pty path).
+nano_bridge reads `robotros_bringup/config/{bridge,robot,firmware}.yaml` (paths overridable as parameters);
+`test_nano_bridge_ros.py` runs the node against two fake_nano ptys (needs ROS, so it runs in CI / on the Surface).
 CI (`.github/workflows/ci.yml`) runs the same in a `ros:jazzy` container. Add a CI job whenever
 a new kind of code appears (ruff, PlatformIO native tests, `tools/check_i18n.py`).
 

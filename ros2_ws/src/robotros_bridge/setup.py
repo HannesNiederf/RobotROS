@@ -17,5 +17,10 @@ setup(
     description="Serial bridge between the Pi and the Nano boards of robotROS.",
     license="TODO",
     tests_require=["pytest"],
-    entry_points={"console_scripts": ["fake_nano = robotros_bridge.fake_nano_main:main"]},
+    entry_points={
+        "console_scripts": [
+            "fake_nano = robotros_bridge.fake_nano_main:main",
+            "nano_bridge = robotros_bridge.nano_bridge:main",
+        ]
+    },
 )

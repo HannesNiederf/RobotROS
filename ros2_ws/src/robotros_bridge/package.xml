@@ -3,11 +3,24 @@
 <package format="3">
   <name>robotros_bridge</name>
   <version>0.1.0</version>
-  <description>Serial bridge between the Pi and the Nano boards of robotROS: protocol library (spez_firmware_protokoll.md section 2), later nano_bridge and fake_nano.</description>
+  <description>Serial bridge between the Pi and the Nano boards of robotROS: protocol library, nano_bridge node and fake_nano simulator (spez_firmware_protokoll.md).</description>
   <!-- TODO: set the real maintainer name and e-mail address. -->
   <maintainer email="todo@example.invalid">RobotROS team</maintainer>
   <!-- TODO: the project license is not decided yet. -->
   <license>TODO</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>builtin_interfaces</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>robotros_interfaces</exec_depend>
+  <exec_depend>robotros_bringup</exec_depend>
+  <exec_depend>python3-serial</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
 
   <test_depend>python3-pytest</test_depend>
 
