@@ -97,6 +97,8 @@ do_env() (
   echo "RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-unset}"
   (ros_env && gz sim --versions) 2>&1 | head -1 | sed 's/^/gz sim: /'
   python3 --version
+  python3 -m pytest --version 2>&1 | head -1
+  echo "ROS environment inherited from the calling shell: ${ROS_DISTRO:-no}${PYTHONPATH:+ (PYTHONPATH set)}"
   python3 -c "import serial; print('pyserial', serial.__version__)" 2>&1 | tail -1
   for tool in cmake g++ clang-format ruff pio; do
     if have "$tool"; then echo "$tool: $("$tool" --version 2>&1 | head -1)"; else echo "$tool: not installed"; fi
@@ -106,7 +108,12 @@ do_env() (
 
 do_build() ( ros_env && cd ros2_ws && colcon build --event-handlers console_direct+ )
 do_test() ( ros_env && cd ros2_ws && colcon test --event-handlers console_direct+ && colcon test-result --verbose )
-do_pytest() { python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test -q; }
+# These tests need no ROS. Run them without a ROS environment that may be inherited from the calling shell
+# (PYTHONPATH, pytest plugins of ROS), and print the header and a summary of everything not passed.
+do_pytest() {
+  env -u PYTHONPATH -u AMENT_PREFIX_PATH PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+    python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test -ra -p no:cacheprovider
+}
 do_fw() {
   cmake -S firmware/test/host -B "$OUT/fw_build" -DWITH_SANITIZERS=ON && cmake --build "$OUT/fw_build" &&
     ctest --test-dir "$OUT/fw_build" --output-on-failure
