@@ -96,7 +96,9 @@ if [ "$CHECK" = true ]; then
     echo "FAIL  RViz is not running"
     rc=1
   fi
-  if grep -aiE "\[rviz2.*(error|fatal)|rviz2-[0-9]+\]: process has died" "$LOG" | head -n 20; then
+  # The glsl120 shader message comes from software OpenGL under Xvfb (CI) when RViz draws a map; on a machine
+  # with a GPU driver it should not appear (unverified). Everything else from RViz counts as an error.
+  if grep -aiE "\[rviz2.*(error|fatal)|rviz2-[0-9]+\]: process has died" "$LOG" | grep -av "glsl120" | head -n 20 | grep .; then
     echo "FAIL  RViz reported errors (lines above)"
     rc=1
   fi
