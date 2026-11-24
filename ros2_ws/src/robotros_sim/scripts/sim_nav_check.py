@@ -31,6 +31,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profi
 from rclpy.time import Time
 from robotros_interfaces.msg import SafetyState
 from robotros_interfaces.srv import SetArm
+from std_srvs.srv import Trigger
 
 WAIT_S = 180.0  # wall-clock bound for start-up of Gazebo plus the stack on a slow CI runner
 
@@ -176,8 +177,20 @@ class NavCheck(Node):
         init.pose.pose = p
         init.pose.covariance[0] = init.pose.covariance[7] = 0.05**2
         init.pose.covariance[35] = 0.05**2
-        ok = self.nav.wait_for_server(timeout_sec=WAIT_S)
-        self.report(ok, "NavigateToPose action server available (bt_navigator active)")
+        # The action server exists before bt_navigator is active (it rejects goals until then): wait for the
+        # lifecycle manager to report all navigation nodes active.
+        active = self.create_client(Trigger, "/lifecycle_manager_navigation/is_active")
+        ok = False
+        deadline = time.monotonic() + WAIT_S
+        while not ok and time.monotonic() < deadline and active.wait_for_service(timeout_sec=5.0):
+            future = active.call_async(Trigger.Request())
+            self.spin_until(future.done, 10.0)
+            ok = bool(future.done() and future.result().success)
+            if not ok:
+                self.sim_sleep(1.0)
+        self.report(ok, "lifecycle_manager_navigation: all Nav2 nodes active")
+        ok = ok and self.nav.wait_for_server(timeout_sec=60.0)
+        self.report(ok, "NavigateToPose action server available")
         if not ok:
             return 1
         for _ in range(5):  # AMCL may come up after the action server; repeat the initial pose

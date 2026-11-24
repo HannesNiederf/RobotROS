@@ -53,8 +53,10 @@ run_phase() {  # name, launch args..., -- , check args...
   python3 "$CHECK" "$@" || rc=$?
   stop_sim
   if [ "$rc" -ne 0 ]; then
-    echo "---- last 80 lines of $name.log ----"
-    tail -n 80 "$LOG_DIR/$name.log" || true
+    echo "---- $name.log: errors, warnings, lifecycle (first 80) ----"
+    grep -aiE "error|warn|fail|reject|abort|exception|Managed nodes|lifecycle_manager" "$LOG_DIR/$name.log" | head -n 80 || true
+    echo "---- last 30 lines of $name.log ----"
+    tail -n 30 "$LOG_DIR/$name.log" || true
   fi
   return "$rc"
 }
