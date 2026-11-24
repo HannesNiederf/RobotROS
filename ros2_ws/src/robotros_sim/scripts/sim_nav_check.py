@@ -158,7 +158,8 @@ class NavCheck(Node):
         glass = any(abs(y + 2.0) < 0.1 and -1.4 < x < -0.6 for x, y in occ)
         self.report(not glass, "glass wall not in the lidar map (expected: invisible to the lidar)")
         cmd = ["ros2", "run", "nav2_map_server", "map_saver_cli", "-f", map_out]
-        cmd += ["--ros-args", "-p", "use_sim_time:=true"]
+        # Wall-clock timeout of map_saver (default 2 s is one slam map_update_interval; too short on CI).
+        cmd += ["--ros-args", "-p", "save_map_timeout:=20.0", "-p", "map_subscribe_transient_local:=true"]
         done = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         self.report(done.returncode == 0, f"map saved to {map_out}.yaml (map_saver_cli rc {done.returncode})")
         if done.returncode != 0:
