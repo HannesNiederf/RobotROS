@@ -52,10 +52,14 @@ def main(argv: list[str] | None = None) -> int:
 
     nano = FakeNano(ROLES[args.role], log=lambda msg: print(msg, file=sys.stderr, flush=True))
     nano.power_on(now_ms(), estop_pressed=args.estop)
+    last = now_ms()
     try:
         while True:
             readable, _, _ = select.select([master], [], [], args.period_ms / 1000.0)
             t = now_ms()
+            if t - last > 100:  # diagnostics: the simulated Nano itself was not scheduled
+                print(f"fake_nano {args.role}: loop stalled for {t - last} ms", file=sys.stderr, flush=True)
+            last = t
             if readable:
                 try:
                     data = os.read(master, 1024)
