@@ -1,0 +1,21 @@
+row,state,event,estop_pressed,next_state,arming,actions
+# Safety state machine of the DRIVE role, spez_firmware_protokoll.md section 5.1 (source of truth).
+# One line per table row. Columns:
+#   state         state before the event (START = power-on or reset)
+#   event         RESET, ARM1, ARM0, ESTOP_PRESS, ESTOP_RELEASE, WD_HARD (no valid Pi message for WD_HARD_MS)
+#   estop_pressed state of the E-stop input when the event happens (1 = pressed, - = not relevant)
+#   next_state    state after the event
+#   arming        arming output after the event (1 = on, 0 = off)
+#   actions       ';'-separated: HELLO, ERR5, ACK_ARM, BRAKE, SETPOINTS_ZERO, DRIVE_DELAY_200MS,
+#                 SW_STOP_FLAG, EVT10, EVT11, EVT50, NONE
+1,START,RESET,1,ESTOP,0,HELLO
+2,START,RESET,0,BOOT_LOCKED,0,HELLO
+3,BOOT_LOCKED,ARM1,0,ARMED,1,ACK_ARM;SETPOINTS_ZERO;DRIVE_DELAY_200MS
+4,BOOT_LOCKED,ARM1,1,BOOT_LOCKED,0,ERR5
+5,BOOT_LOCKED,ESTOP_PRESS,1,ESTOP,0,NONE
+6,ARMED,ESTOP_PRESS,1,ESTOP,0,BRAKE;EVT10
+7,ESTOP,ESTOP_RELEASE,0,WAIT_ACK,0,EVT11
+8,WAIT_ACK,ARM1,0,ARMED,1,ACK_ARM;SETPOINTS_ZERO;DRIVE_DELAY_200MS
+9,WAIT_ACK,ESTOP_PRESS,1,ESTOP,0,NONE
+10,ARMED,ARM0,0,WAIT_ACK,0,ACK_ARM;BRAKE;SW_STOP_FLAG
+11,ARMED,WD_HARD,0,WAIT_ACK,0,EVT50
