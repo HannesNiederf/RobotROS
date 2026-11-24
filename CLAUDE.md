@@ -23,12 +23,13 @@ two Arduino Nano Every handle real-time and safety, the Surface shows a web UI.
   Do the git and GitHub work yourself wherever your tools allow it.
 
 ## Where the specification lives
-The binding specification is currently in the claude.ai project "RobotROS", not yet in this repository:
-`softwarespezifikation.md` (D-01..D-28), `spez_aenderung_01_rueckwaerts.md` (ÄM-01, takes precedence),
+The binding specification is in `docs/spec/` (copied from the claude.ai project "RobotROS"):
+`softwarespezifikation.md` (D-01..D-28), `spez_aenderung_01_rueckwaerts.md` (ÄM-01, D-29..D-38, takes precedence),
 `spez_firmware_protokoll.md`, `spez_parameter_tests.md`, `pinplan_nano.md`.
-Copies are meant to go to `docs/spec/`. If `docs/spec/` is empty, ask the owner instead of guessing.
-The specification documents still use the former package and path prefix in identifiers; read them
-together with the mapping in `docs/adr/0001-projektname-robotros.md`.
+Read `docs/spec/README.md` first: it lists later decisions (D-39, round 26) and errata that are not yet
+in the documents. The copies already use the new name (mapping in `docs/adr/0001-projektname-robotros.md`).
+References like `claude/<file>.md` mean the claude.ai project; for the five files above use the copy here.
+If something needed is not in `docs/spec/`, ask the owner instead of guessing.
 Conflict rule: the newer change wins (D-39 and round 26 > ÄM-01 > the three specs > projektwissen).
 Decisions that change the spec are recorded as ADRs in `docs/adr/`.
 
