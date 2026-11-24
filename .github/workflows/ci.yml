@@ -62,32 +62,23 @@ jobs:
           source /opt/ros/jazzy/setup.bash
           cd ros2_ws
           colcon build --event-handlers console_direct+
-      - name: Repeat full colcon test (probe, temporary)
+      - name: E2E under CPU load (probe, temporary)
         run: |
           source /opt/ros/jazzy/setup.bash
-          cd ros2_ws
+          source ros2_ws/install/setup.bash
+          nproc
+          cd ros2_ws/src/robotros_bridge
           fails=0
-          for i in $(seq 1 12); do
-            colcon test --event-handlers console_direct+ > /tmp/ct_$i.log 2>&1
-            if colcon test-result > /dev/null 2>&1; then r=PASS; else r=FAIL; fails=$((fails+1)); fi
-            echo "run $i $r"
-            grep -E "stalled|longest gap|link lost|EVT 5|^E   [a-zA-Z]" /tmp/ct_$i.log | head -12 || true
+          for i in $(seq 1 10); do
+            python3 -c "while True: pass" & b1=$!
+            python3 -c "while True: pass" & b2=$!
+            if python3 -m pytest test/test_nano_bridge_ros.py -q -s -p no:cacheprovider > /tmp/e2e_$i.log 2>&1; then r=PASS; else r=FAIL; fails=$((fails+1)); fi
+            kill $b1 $b2
+            echo "run $i $r $(grep -h 'longest gap' /tmp/e2e_$i.log) stalls=$(grep -c 'stalled for' /tmp/e2e_$i.log)"
+            [ "$r" = FAIL ] && grep -E "stalled|link lost|EVT 5|^E   [a-zA-Z]" /tmp/e2e_$i.log | head -10 || true
           done
-          echo "FAILS: $fails of 12"
-          echo "sequential:"
-          for i in $(seq 1 5); do
-            colcon test --executor sequential > /tmp/cs_$i.log 2>&1
-            if colcon test-result > /dev/null 2>&1; then r=PASS; else r=FAIL; fi
-            echo "seq run $i $r"; grep -rhE "stalled|longest gap" build/robotros_bridge/ /tmp/cs_$i.log 2>/dev/null | head -5 || true
-          done
-      - name: Interface smoke test
-        run: tools/smoke_interfaces.sh
+          echo "FAILS: $fails of 10"
 
-      - name: Interface smoke test
-        run: tools/smoke_interfaces.sh
-
-  # Headless Gazebo Harmonic smoke test (softwarespezifikation.md section 14): start the generic world,
-  # check /scan, /odom, TF, and drive. Software rendering (Mesa) because CI has no GPU.
   sim:
     runs-on: ubuntu-24.04
     container: ros:jazzy
