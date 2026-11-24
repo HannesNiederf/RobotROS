@@ -391,8 +391,11 @@ class NanoBridge(Node):
 
     def on_set_arm(self, request: SetArm.Request, response: SetArm.Response) -> SetArm.Response:
         wanted_armed = bool(request.arm)
-        sent = self._command(p.Role.DRIVE, "ARM", arm=int(wanted_armed))
         timeout = float(self.bridge_cfg["arm_timeout_s"])
+        drive = self._device_with(p.Role.DRIVE)
+        # The link may still be configuring right after start-up: give it the same time budget.
+        ready = drive is not None and self._wait_for(lambda: drive.link.state == LinkState.READY, timeout)
+        sent = ready and self._command(p.Role.DRIVE, "ARM", arm=int(wanted_armed))
 
         def reached() -> bool:
             s = self.last_safety
@@ -411,6 +414,7 @@ class NanoBridge(Node):
             return response
         with self.lock:
             dev.acks.clear()
+        self._wait_for(lambda: dev.link.state == LinkState.READY, 1.0)
         if not self._command(p.Role.AUX, "REL", channel=int(request.channel), on=int(request.on)):
             response.success, response.message = False, "AUX link not ready"
             return response
