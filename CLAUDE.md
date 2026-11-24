@@ -41,7 +41,8 @@ Decisions that change the spec are recorded as ADRs in `docs/adr/`.
 ros2_ws/src/   ROS packages (spec section 3.2). Implemented so far: robotros_interfaces,
                robotros_bridge (core/: protocol, safety, fake_nano, kinematics, link, convert;
                nodes/scripts: nano_bridge, fake_nano), robotros_bringup (config/*.yaml only so far),
-               robotros_description (xacro, geometry from robot.yaml), robotros_sim (Gazebo world, launch, smoke check)
+               robotros_description (xacro, geometry from robot.yaml), robotros_sim (Gazebo world, launch, smoke check,
+               sim_hw_adapter = simulated Nanos: robotros_sim/hw_model.py reuses fake_nano, gates /cmd_vel -> /sim/cmd_vel)
 firmware/      Nano firmware: lib/core (protocol, safety; C++11, host-tested), PlatformIO project not yet
 web_ui/        Browser UI (vanilla JS, no build step) - not started
 deploy/        systemd, udev, sudoers, chrony, cyclonedds.xml - not started

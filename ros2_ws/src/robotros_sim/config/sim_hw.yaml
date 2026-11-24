@@ -1,0 +1,21 @@
+# sim_hw_adapter (softwarespezifikation.md section 14). Every value here is "chosen here" for the
+# simulation; the real values come from the battery test C9 and the docking design.
+battery:
+  capacity_ah: 7.2              # assumption: typical 12 V lead-acid battery for this robot size
+  initial_soc: 0.9
+  r_internal_ohm: 0.05
+  # Open-circuit voltage of a 12 V lead-acid battery (typical table, assumption until C9): [soc, volts]
+  ocv_curve: [[0.0, 11.4], [0.1, 11.55], [0.2, 11.7], [0.3, 11.82], [0.4, 11.96], [0.5, 12.1],
+              [0.6, 12.24], [0.7, 12.37], [0.8, 12.5], [0.9, 12.62], [1.0, 12.73]]
+  idle_current_a: 1.2           # Pi + lidar + Nanos
+  drive_current_a_per_mps: 4.0  # extra current per m/s of body speed
+  hub_current_a: 1.5
+  charger_v: 13.8               # REQ-ELEC-02
+  charge_limit_a: 0.72          # REQ-ELEC-02
+  charge_taper_soc: 0.8         # above this the current falls linearly to 0 at full charge (CV phase)
+dock:
+  xy: [3.2, 3.2]                # world frame, marking "dock" in worlds/generic.sdf
+  radius: 0.15                  # base_footprint within this distance = charging contacts touch
+motor_tau_ms: 100               # wheel speed lag of the simulated Nano (as fake_nano)
+hub_travel_ms: 3000             # hub time between the limit switches
+step_period_s: 0.01             # model step (simulation time)

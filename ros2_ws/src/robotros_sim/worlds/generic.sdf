@@ -4,7 +4,7 @@
   Values not fixed by the spec are chosen here: wall height 0.5 m, cart clearance 0.25 m (underside of the plate),
   station and obstacle positions. Cart size 0.40 m outside with 0.02 m feet (round 26, clear width 0.36 m).
   C1 is the "feet" cart, C2 the "walled" cart with three walls, open side towards the room (ÄM-01).
-  Not yet here (later steps): cliff area E, moving person, guide rails, cart coupling (DetachableJoint);
+  Not yet here (later steps): moving person, guide rails, cart coupling (DetachableJoint);
   the carts are static until then.
 -->
 <sdf version="1.9">
@@ -107,6 +107,16 @@
         <visual name="wall_left_v"><pose>-0.1775 0 0.14 0 0 0</pose><geometry><box><size>0.005 0.36 0.22</size></box></geometry><material><ambient>0.4 0.4 0.5 1</ambient><diffuse>0.4 0.4 0.5 1</diffuse></material></visual>
         <collision name="wall_right_c"><pose>0.1775 0 0.14 0 0 0</pose><geometry><box><size>0.005 0.36 0.22</size></box></geometry></collision>
         <visual name="wall_right_v"><pose>0.1775 0 0.14 0 0 0</pose><geometry><box><size>0.005 0.36 0.22</size></box></geometry><material><ambient>0.4 0.4 0.5 1</ambient><diffuse>0.4 0.4 0.5 1</diffuse></material></visual>
+      </link>
+    </model>
+    <!-- Cliff area E (spec section 14): only a floor marking; the physics stays flat. sim_hw_adapter reads the
+         rectangle of every model named cliff* and reports "no echo" for an ultrasonic ground point inside it. -->
+    <model name="cliff_e">
+      <static>true</static>
+      <pose>1.2 0 0 0 0 0</pose>
+      <link name="link">
+        <visual name="v"><pose>0 0 0.0005 0 0 0</pose><geometry><box><size>0.4 0.6 0.001</size></box></geometry>
+          <material><ambient>0.8 0.1 0.1 1</ambient><diffuse>0.8 0.1 0.1 1</diffuse></material></visual>
       </link>
     </model>
   </world>

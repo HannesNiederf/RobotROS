@@ -20,13 +20,19 @@
   ros_type_name: tf2_msgs/msg/TFMessage
   gz_type_name: gz.msgs.Pose_V
   direction: GZ_TO_ROS
+# True pose of the robot in the world (cliff areas and dock of sim_hw_adapter), not for navigation.
+- ros_topic_name: /sim/ground_truth
+  gz_topic_name: /sim/ground_truth
+  ros_type_name: nav_msgs/msg/Odometry
+  gz_type_name: gz.msgs.Odometry
+  direction: GZ_TO_ROS
 - ros_topic_name: /joint_states
   gz_topic_name: /sim/joint_states
   ros_type_name: sensor_msgs/msg/JointState
   gz_type_name: gz.msgs.Model
   direction: GZ_TO_ROS
-# Later the sim_hw_adapter sits in between (safety state as on the Nano); until then /cmd_vel goes straight through.
-- ros_topic_name: /cmd_vel
+# /cmd_vel goes to sim_hw_adapter (simulated Nano); only what it lets through reaches Gazebo.
+- ros_topic_name: /sim/cmd_vel
   gz_topic_name: /sim/cmd_vel
   ros_type_name: geometry_msgs/msg/Twist
   gz_type_name: gz.msgs.Twist
