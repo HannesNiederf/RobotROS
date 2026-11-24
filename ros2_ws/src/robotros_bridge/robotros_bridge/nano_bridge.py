@@ -7,6 +7,7 @@ only does serial I/O, ROS publishing and parameters. Time for logic is monotonic
 from __future__ import annotations
 
 import math
+import os
 import threading
 import time
 from collections.abc import Callable
@@ -54,6 +55,7 @@ class Device:
     port: serial.Serial | None = None
     next_open_ms: int = 0
     acks: list[p.Message] = field(default_factory=list)
+    tx: bytearray = field(default_factory=bytearray)  # bytes not yet accepted by the serial driver
 
 
 class NanoBridge(Node):
@@ -132,6 +134,7 @@ class NanoBridge(Node):
         self.ping_period_ms = 1000.0 / float(bc["ping_rate_hz"])
         self.hub_period_ms = 1000.0 / float(bc["hub_rate_hz"])
         self.io_period_s = float(bc["io_period_s"])
+        self.tx_limit = int(bc["tx_buffer_limit_bytes"])
         self.cmd_lock = threading.Lock()  # hub_cmd is set by the executor and read by the I/O thread
         self._io_stop = threading.Event()
         self._io_thread = threading.Thread(target=self._io_loop, name="nano_bridge_io", daemon=True)
@@ -204,7 +207,7 @@ class NanoBridge(Node):
             if now < dev.next_open_ms or link.state == LinkState.INCOMPATIBLE:
                 return
             try:
-                dev.port = serial.Serial(dev.cfg.port, dev.cfg.baud, timeout=0, write_timeout=0.05)
+                dev.port = serial.Serial(dev.cfg.port, dev.cfg.baud, timeout=0, write_timeout=0)
             except (serial.SerialException, OSError) as err:
                 dev.next_open_ms = now + self.reconnect_ms
                 self.get_logger().warn(f"{dev.cfg.name}: cannot open {dev.cfg.port}: {err}", throttle_duration_sec=10.0)
@@ -220,11 +223,21 @@ class NanoBridge(Node):
         with self.lock:
             events = [link.feed(now, data), link.tick(now)]
             out = link.take_output()
-        if out:
+        dev.tx += out
+        if dev.tx:
+            # Non-blocking write straight to the file descriptor. pyserial's write_timeout raised a false
+            # "Write timeout" when the thread was preempted right after a complete write (seen in CI).
+            # Whatever the driver does not take now is sent on the next cycle.
             try:
-                dev.port.write(out)
+                written = os.write(dev.port.fileno(), dev.tx)
+            except BlockingIOError:
+                written = 0
             except (serial.SerialException, OSError) as err:
                 self._close(dev, now, f"write error: {err}")
+                return
+            del dev.tx[:written]
+            if len(dev.tx) > self.tx_limit:
+                self._close(dev, now, f"{len(dev.tx)} bytes not accepted by the serial driver")
                 return
         for ev in events:
             self._handle_events(dev, ev)
@@ -236,6 +249,7 @@ class NanoBridge(Node):
                 dev.port.close()
         finally:
             dev.port = None
+            dev.tx.clear()
             dev.next_open_ms = now + self.reconnect_ms
             with self.lock:
                 dev.link.disconnect()

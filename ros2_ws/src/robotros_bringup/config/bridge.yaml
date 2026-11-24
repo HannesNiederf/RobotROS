@@ -14,6 +14,7 @@ reconnect_period_s: 1.0
 arm_timeout_s: 1.0       # /hw/set_arm waits this long for ARMED in $SAF (else E102)
 checksum_warn_ratio: 0.05
 io_period_s: 0.005       # chosen here: serial I/O thread cycle
+tx_buffer_limit_bytes: 2048  # chosen here: more unsent bytes than this -> link lost (driver not draining)
 io_gap_warn_s: 0.1       # chosen here: warn when the serial loop was not served for this long (diagnostics only)
 # Voltage conversion of $PWR (V = adc_mv/1000 * divider_ratio * gain + offset), spez_parameter_tests.md 2.5
 divider_ratio: 5.0
