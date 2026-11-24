@@ -18,10 +18,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Interface file syntax check
         run: python3 tools/check_interfaces.py ros2_ws/src
-      - name: Tool tests
+      - name: Tool and core logic tests
         run: |
-          python3 -m pip install --break-system-packages pytest
-          python3 -m pytest tools/tests -q
+          python3 -m pip install --break-system-packages pytest ruff
+          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test -q
+      - name: Ruff
+        run: ruff check .
+      - name: Protocol vectors are up to date
+        run: python3 tools/gen_protocol_vectors.py | diff - firmware/test/vectors/protocol_vectors.json
 
   # Authoritative build and test on ROS 2 Jazzy (softwarespezifikation.md section 16).
   ros:

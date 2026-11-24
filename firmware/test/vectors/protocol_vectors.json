@@ -1,0 +1,317 @@
+{
+  "_comment": "Golden vectors for protocol version 1 (spez_firmware_protokoll.md section 2). Shared by the Python bridge, fake_nano and the firmware host tests. Checksums were computed with an implementation independent of the libraries under test.",
+  "proto_ver": 1,
+  "max_frame_len": 96,
+  "valid": [
+    {
+      "frame": "$WHO*50",
+      "name": "WHO",
+      "fields": {}
+    },
+    {
+      "frame": "$PING,7*0B",
+      "name": "PING",
+      "fields": {
+        "seq": 7
+      }
+    },
+    {
+      "frame": "$VEL,12,300,-300*5D",
+      "name": "VEL",
+      "fields": {
+        "seq": 12,
+        "l_tps": 300,
+        "r_tps": -300
+      }
+    },
+    {
+      "frame": "$VEL,4294967295,-2147483648,2147483647*5C",
+      "name": "VEL",
+      "fields": {
+        "seq": 4294967295,
+        "l_tps": -2147483648,
+        "r_tps": 2147483647
+      }
+    },
+    {
+      "frame": "$ARM,1*43",
+      "name": "ARM",
+      "fields": {
+        "arm": 1
+      }
+    },
+    {
+      "frame": "$ARM,0*42",
+      "name": "ARM",
+      "fields": {
+        "arm": 0
+      }
+    },
+    {
+      "frame": "$CLR*5D",
+      "name": "CLR",
+      "fields": {}
+    },
+    {
+      "frame": "$CFG,KP,1500*5D",
+      "name": "CFG",
+      "fields": {
+        "key": "KP",
+        "value": 1500
+      }
+    },
+    {
+      "frame": "$CFG,US_FLOOR_F,120*69",
+      "name": "CFG",
+      "fields": {
+        "key": "US_FLOOR_F",
+        "value": 120
+      }
+    },
+    {
+      "frame": "$HUB,1,200*5C",
+      "name": "HUB",
+      "fields": {
+        "command": 1,
+        "pwm": 200
+      }
+    },
+    {
+      "frame": "$LED,2,3,255,110,0*52",
+      "name": "LED",
+      "fields": {
+        "strip": 2,
+        "pattern": 3,
+        "r": 255,
+        "g": 110,
+        "b": 0
+      }
+    },
+    {
+      "frame": "$BUZ,2*53",
+      "name": "BUZ",
+      "fields": {
+        "pattern": 2
+      }
+    },
+    {
+      "frame": "$REL,1,1*5B",
+      "name": "REL",
+      "fields": {
+        "channel": 1,
+        "on": 1
+      }
+    },
+    {
+      "frame": "$HELLO,1,1.0.0,1,7*44",
+      "name": "HELLO",
+      "fields": {
+        "proto": 1,
+        "fw": "1.0.0",
+        "role": 1,
+        "caps": 7
+      }
+    },
+    {
+      "frame": "$PONG,7*0D",
+      "name": "PONG",
+      "fields": {
+        "seq": 7
+      }
+    },
+    {
+      "frame": "$ODO,123456,-1000,1002,-250,251*6C",
+      "name": "ODO",
+      "fields": {
+        "t_ms": 123456,
+        "l_ticks": -1000,
+        "r_ticks": 1002,
+        "l_tps": -250,
+        "r_tps": 251
+      }
+    },
+    {
+      "frame": "$SEN,5000,65535,118,2,1,5*63",
+      "name": "SEN",
+      "fields": {
+        "t_ms": 5000,
+        "us_front_mm": 65535,
+        "us_rear_mm": 118,
+        "cls_front": 2,
+        "cls_rear": 1,
+        "bump": 5
+      }
+    },
+    {
+      "frame": "$SAF,4294967295,3,258*79",
+      "name": "SAF",
+      "fields": {
+        "t_ms": 4294967295,
+        "state": 3,
+        "flags": 258
+      }
+    },
+    {
+      "frame": "$PWR,100,2512,0,2490,-32768*66",
+      "name": "PWR",
+      "fields": {
+        "t_ms": 100,
+        "adc_batt_mv": 2512,
+        "adc_chg_mv": 0,
+        "adc_rail_mv": 2490,
+        "i_ma": -32768
+      }
+    },
+    {
+      "frame": "$HUBST,900,3,1,0*53",
+      "name": "HUBST",
+      "fields": {
+        "t_ms": 900,
+        "state": 3,
+        "limits": 1,
+        "fault": 0
+      }
+    },
+    {
+      "frame": "$EVT,42,30,5*5B",
+      "name": "EVT",
+      "fields": {
+        "t_ms": 42,
+        "type": 30,
+        "arg": 5
+      }
+    },
+    {
+      "frame": "$ACK,ARM*3B",
+      "name": "ACK",
+      "fields": {
+        "command": "ARM"
+      }
+    },
+    {
+      "frame": "$ACK,CFG,KP*10",
+      "name": "ACK",
+      "fields": {
+        "command": "CFG",
+        "arg": "KP"
+      }
+    },
+    {
+      "frame": "$ERR,1,VEL*2B",
+      "name": "ERR",
+      "fields": {
+        "code": 1,
+        "detail": "VEL"
+      }
+    },
+    {
+      "frame": "$ERR,6*5F",
+      "name": "ERR",
+      "fields": {
+        "code": 6
+      }
+    },
+    {
+      "frame": "$CFG,KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK,1*38",
+      "name": "CFG",
+      "fields": {
+        "key": "KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK",
+        "value": 1
+      },
+      "why": "exactly 96 bytes including line end"
+    }
+  ],
+  "extra_fields": [
+    {
+      "frame": "$PING,7,99,abc*6B",
+      "name": "PING",
+      "fields": {
+        "seq": 7
+      },
+      "extra": [
+        "99",
+        "abc"
+      ]
+    },
+    {
+      "frame": "$HELLO,1,1.0.0,2,255,9*57",
+      "name": "HELLO",
+      "fields": {
+        "proto": 1,
+        "fw": "1.0.0",
+        "role": 2,
+        "caps": 255
+      },
+      "extra": [
+        "9"
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "frame": "$VEL,12,300,-300*00",
+      "error_code": 1,
+      "why": "wrong checksum"
+    },
+    {
+      "frame": "$VEL,12,300,-300*5d",
+      "error_code": 1,
+      "why": "lower-case checksum"
+    },
+    {
+      "frame": "$VEL,12,300,-300",
+      "error_code": 1,
+      "why": "no checksum"
+    },
+    {
+      "frame": "$FOO,1*5B",
+      "error_code": 2,
+      "why": "unknown command"
+    },
+    {
+      "frame": "$VEL,12,300*6F",
+      "error_code": 3,
+      "why": "missing field"
+    },
+    {
+      "frame": "$VEL,12,3.5,0*68",
+      "error_code": 3,
+      "why": "float is not allowed"
+    },
+    {
+      "frame": "$VEL,12,+3,0*58",
+      "error_code": 3,
+      "why": "plus sign is not allowed"
+    },
+    {
+      "frame": "$ARM,2*40",
+      "error_code": 3,
+      "why": "value out of range"
+    },
+    {
+      "frame": "$VEL,1,2147483648,0*77",
+      "error_code": 3,
+      "why": "int32 overflow"
+    },
+    {
+      "frame": "$CFG,,5*77",
+      "error_code": 3,
+      "why": "empty string field"
+    },
+    {
+      "frame": "$PING,1 *2D",
+      "error_code": 3,
+      "why": "space in payload"
+    },
+    {
+      "frame": "$PING,1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111*00",
+      "error_code": 6,
+      "why": "frame longer than 96 bytes including line end"
+    },
+    {
+      "frame": "$CFG,KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK,1*73",
+      "error_code": 6,
+      "why": "97 bytes including line end, correct checksum"
+    }
+  ]
+}
