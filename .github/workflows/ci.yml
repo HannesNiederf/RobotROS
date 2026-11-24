@@ -25,7 +25,22 @@ jobs:
       - name: Ruff
         run: ruff check .
       - name: Protocol vectors are up to date
-        run: python3 tools/gen_protocol_vectors.py | diff - firmware/test/vectors/protocol_vectors.json
+        run: |
+          python3 tools/gen_protocol_vectors.py | diff - firmware/test/vectors/protocol_vectors.json
+          python3 tools/gen_protocol_vectors.py --text | diff - firmware/test/vectors/protocol_vectors.txt
+
+  # Firmware core on the host (C++, spez_firmware_protokoll.md 11.1), with sanitizers.
+  firmware-host:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: clang-format
+        run: clang-format --dry-run --Werror firmware/lib/core/* firmware/test/host/*.cpp firmware/test/host/*.h
+      - name: Build and run host tests
+        run: |
+          cmake -S firmware/test/host -B build/fw -DWITH_SANITIZERS=ON
+          cmake --build build/fw
+          ctest --test-dir build/fw --output-on-failure
 
   # Authoritative build and test on ROS 2 Jazzy (softwarespezifikation.md section 16).
   ros:

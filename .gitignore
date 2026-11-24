@@ -16,3 +16,6 @@ __pycache__/
 # Local state
 *.db
 *.log
+
+# CMake host builds
+build/
