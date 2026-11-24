@@ -20,7 +20,7 @@ jobs:
         run: python3 tools/check_interfaces.py ros2_ws/src
       - name: Tool and core logic tests
         run: |
-          python3 -m pip install --break-system-packages pytest ruff
+          python3 -m pip install --break-system-packages pytest ruff pyyaml
           python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test -q
       - name: Ruff
         run: ruff check .

@@ -1,0 +1,25 @@
+# Robot geometry and odometry (spez_parameter_tests.md section 2.1, with round 26 values).
+# All values are placeholders until CAD and calibration C1-C3, C7 (see the "source" comments).
+robot_length: 0.30          # m, CAD (length still open after round 26)
+robot_width: 0.30           # m, round 26
+cart_size: 0.40             # m, outer size, simulation placeholder after round 26
+footprint_robot: 0.30       # m, square, round 26
+footprint_cart: 0.42        # m, square, round 26
+wheel_radius_m: 0.0325      # CAD, calibration C2
+track_width_m: 0.16         # CAD, calibration C3
+ticks_per_wheel_rev: 576    # placeholder, calibration C1
+wheel_radius_scale: 1.0     # calibration C2
+track_scale: 1.0            # calibration C3
+geometry_calibrated: false  # true only after C1-C3; while false the bridge limits speed to 0.05 m/s (D-24)
+lidar_x: 0.0
+lidar_z: 0.12
+lidar_yaw_rad: 0.0          # calibration C7
+us_front_x: 0.13
+us_rear_x: -0.13
+us_pitch_deg: 45
+us_ground_x: 0.21
+bumper_front_x: 0.14
+self_mask_boxes: []
+serial_latency_s: 0.005
+odom_cov_xy: 0.02
+odom_cov_yaw: 0.05

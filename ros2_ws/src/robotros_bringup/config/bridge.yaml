@@ -1,0 +1,20 @@
+# Serial devices of nano_bridge (spez_firmware_protokoll.md section 2.6). Variant A: two Nano Every.
+devices:
+  - {name: drive, port: /dev/robotros_nano_drive, role: drive, baud: 115200}
+  - {name: aux, port: /dev/robotros_nano_aux, role: aux, baud: 115200}
+vel_rate_hz: 20          # $VEL to DRIVE
+ping_rate_hz: 5          # $PING to AUX
+hub_rate_hz: 10          # $HUB while a hub command is active
+cmd_vel_timeout_s: 0.5   # chosen here: no /cmd_vel for this long -> send zero setpoints
+hub_cmd_timeout_s: 2.0   # chosen here: no /hw/cmd/hub for this long -> stop sending $HUB (Nano lease stops the hub)
+hello_timeout_s: 1.0
+cfg_ack_timeout_s: 0.5
+link_timeout_s: 0.3      # no byte for this long -> link lost
+reconnect_period_s: 1.0
+arm_timeout_s: 1.0       # /hw/set_arm waits this long for ARMED in $SAF (else E102)
+checksum_warn_ratio: 0.05
+# Voltage conversion of $PWR (V = adc_mv/1000 * divider_ratio * gain + offset), spez_parameter_tests.md 2.5
+divider_ratio: 5.0
+voltage_gain: {batt: 1.0, chg: 1.0, rail: 1.0}
+voltage_offset: {batt: 0.0, chg: 0.0, rail: 0.0}
+charger_present_v: 12.0

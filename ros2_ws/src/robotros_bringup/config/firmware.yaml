@@ -1,0 +1,30 @@
+# $CFG values sent to the Nanos after every $HELLO (spez_firmware_protokoll.md section 10).
+# Integers only. Keys are sent only to the role that owns them.
+drive:
+  KP: 0                 # x1000, calibration C4
+  KI: 0
+  KD: 0
+  KFF: 0
+  PWM_MIN_L: 60         # calibration C5
+  PWM_MIN_R: 60
+  PWM_MAX: 255          # calibration C10
+  ACC: 1500             # ticks/s^2
+  TPS_MAX: 2000         # placeholder, from wheel size and max_speed (C2)
+  STOP_TPS: 5
+  MOT_INV: 0
+  ENC_INV: 0
+  US_FLOOR_F: 120       # mm, calibration C6
+  US_FLOOR_R: 120
+  US_CLIFF_MARGIN: 40
+  US_OBST_MARGIN: 40
+  US_CONFIRM_ON: 2
+  US_CONFIRM_OFF: 3
+  BUMP_DEBOUNCE_MS: 5
+  WD_SOFT_MS: 500
+  WD_HARD_MS: 5000
+aux:
+  BUMP_DEBOUNCE_MS: 5
+  HUB_TIMEOUT_MS: 8000  # calibration C12
+  HUB_PWM: 200
+  LED_BRIGHT: 64
+  INA_SHUNT_MOHM: 100
