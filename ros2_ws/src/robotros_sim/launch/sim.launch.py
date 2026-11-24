@@ -1,0 +1,81 @@
+"""Start Gazebo Harmonic with a robotROS world, spawn the robot and bridge the topics to ROS.
+
+Arguments:
+  world     world name in robotros_sim/worlds (default generic)
+  headless  true: server only, rendering without a display (CI, smoke test)
+  x, y, yaw spawn pose of the robot
+
+The spec's full command (`world:=generic mode:=nav`, section 14) gets the mode argument when
+Nav2 and SLAM are added.
+"""
+
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition, UnlessCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
+from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
+
+
+def generate_launch_description() -> LaunchDescription:
+    sim_share = FindPackageShare("robotros_sim")
+    world = LaunchConfiguration("world")
+    headless = LaunchConfiguration("headless")
+    world_file = PathJoinSubstitution([sim_share, "worlds", PythonExpression(["'", world, "' + '.sdf'"])])
+    gz_sim_launch = PathJoinSubstitution([FindPackageShare("ros_gz_sim"), "launch", "gz_sim.launch.py"])
+
+    gz_headless = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(gz_sim_launch),
+        launch_arguments={"gz_args": ["-r -s --headless-rendering ", world_file], "on_exit_shutdown": "true"}.items(),
+        condition=IfCondition(headless),
+    )
+    gz_gui = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(gz_sim_launch),
+        launch_arguments={"gz_args": ["-r ", world_file], "on_exit_shutdown": "true"}.items(),
+        condition=UnlessCondition(headless),
+    )
+
+    description = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare("robotros_description"), "launch", "description.launch.py"])
+        ),
+        launch_arguments={"use_sim_time": "true", "sim": "true"}.items(),
+    )
+
+    spawn = Node(
+        package="ros_gz_sim",
+        executable="create",
+        arguments=[
+            "-topic", "robot_description",
+            "-name", "robotros",
+            "-x", LaunchConfiguration("x"),
+            "-y", LaunchConfiguration("y"),
+            "-z", "0.005",
+            "-Y", LaunchConfiguration("yaw"),
+        ],
+        output="screen",
+    )
+
+    bridge_config = PathJoinSubstitution([sim_share, "config", "gz_bridge.yaml"])
+    bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        parameters=[{"config_file": bridge_config, "use_sim_time": True}],
+        output="screen",
+    )
+
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument("world", default_value="generic"),
+            DeclareLaunchArgument("headless", default_value="false"),
+            DeclareLaunchArgument("x", default_value="0.0"),
+            DeclareLaunchArgument("y", default_value="0.0"),
+            DeclareLaunchArgument("yaw", default_value="0.0"),
+            gz_headless,
+            gz_gui,
+            description,
+            spawn,
+            bridge,
+        ]
+    )

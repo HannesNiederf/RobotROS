@@ -21,7 +21,7 @@ jobs:
       - name: Tool and core logic tests
         run: |
           python3 -m pip install --break-system-packages pytest ruff pyyaml
-          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test -q
+          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test -q
       - name: Ruff
         run: ruff check .
       - name: Protocol vectors are up to date
@@ -70,3 +70,34 @@ jobs:
           colcon test-result --verbose
       - name: Interface smoke test
         run: tools/smoke_interfaces.sh
+
+  # Headless Gazebo Harmonic smoke test (softwarespezifikation.md section 14): start the generic world,
+  # check /scan, /odom, TF, and drive. Software rendering (Mesa) because CI has no GPU.
+  sim:
+    runs-on: ubuntu-24.04
+    container: ros:jazzy
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y ros-dev-tools libegl1 libgl1-mesa-dri mesa-utils
+          rosdep update --rosdistro jazzy
+          rosdep install --from-paths ros2_ws/src --ignore-src -r -y --rosdistro jazzy
+      - name: Build
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          cd ros2_ws
+          colcon build --packages-up-to robotros_sim --event-handlers console_direct+
+      - name: Simulation smoke test
+        run: tools/sim_smoke.sh build/sim_smoke
+      - name: Keep simulation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-smoke-logs
+          path: build/sim_smoke
+          if-no-files-found: ignore

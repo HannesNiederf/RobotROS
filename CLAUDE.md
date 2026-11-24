@@ -40,7 +40,8 @@ Decisions that change the spec are recorded as ADRs in `docs/adr/`.
 ```
 ros2_ws/src/   ROS packages (spec section 3.2). Implemented so far: robotros_interfaces,
                robotros_bridge (core/: protocol, safety, fake_nano, kinematics, link, convert;
-               nodes/scripts: nano_bridge, fake_nano), robotros_bringup (config/*.yaml only so far)
+               nodes/scripts: nano_bridge, fake_nano), robotros_bringup (config/*.yaml only so far),
+               robotros_description (xacro, geometry from robot.yaml), robotros_sim (Gazebo world, launch, smoke check)
 firmware/      Nano firmware: lib/core (protocol, safety; C++11, host-tested), PlatformIO project not yet
 web_ui/        Browser UI (vanilla JS, no build step) - not started
 deploy/        systemd, udev, sudoers, chrony, cyclonedds.xml - not started
@@ -54,7 +55,7 @@ source /opt/ros/jazzy/setup.bash
 cd ros2_ws && colcon build && colcon test && colcon test-result --verbose
 cd .. && tools/smoke_interfaces.sh           # after the build
 python3 tools/check_interfaces.py ros2_ws/src  # interface syntax check, needs no ROS
-python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test -q  # tools and core logic, need no ROS
+python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test -q  # need no ROS
 ruff check .                                   # Python lint (config: ruff.toml)
 cmake -S firmware/test/host -B build/fw && cmake --build build/fw && ctest --test-dir build/fw  # firmware core
 ```
@@ -62,6 +63,9 @@ Protocol golden vectors: `firmware/test/vectors/protocol_vectors.json`, generate
 (edit the generator, never the JSON by hand). Python bridge, fake_nano and firmware host tests all use them.
 Safety state machine table: `firmware/test/vectors/safety_fsm.csv` (spec FW section 5.1); fake_nano and the
 firmware host tests are tested row by row against it. Changing it is a safety change (second pair of eyes).
+Simulation: `ros2 launch robotros_sim sim.launch.py` (GUI) or `tools/sim_smoke.sh` (headless check, isolated
+ROS domain 77, localhost only; CI job `sim`). `tools/surface_check.sh [branch]` is run by the owner on the Surface:
+build, all tests, sim smoke, report posted to GitHub issue #9 (read it with `gh api repos/HannesNiederf/RobotROS/issues/9/comments`).
 Run the simulated Nano: `ros2 run robotros_bridge fake_nano --role drive` (prints the pty path).
 nano_bridge reads `robotros_bringup/config/{bridge,robot,firmware}.yaml` (paths overridable as parameters);
 `test_nano_bridge_ros.py` runs the node against two fake_nano ptys (needs ROS, so it runs in CI / on the Surface).

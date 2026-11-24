@@ -1,0 +1,113 @@
+<?xml version="1.0"?>
+<!--
+  Generic test world of robotROS (softwarespezifikation.md section 14, D-19): 7 x 7 m room, walls 0.10 m.
+  Values not fixed by the spec are chosen here: wall height 0.5 m, cart clearance 0.25 m (underside of the plate),
+  station and obstacle positions. Cart size 0.40 m outside with 0.02 m feet (round 26, clear width 0.36 m).
+  C1 is the "feet" cart, C2 the "walled" cart with three walls, open side towards the room (ÄM-01).
+  Not yet here (later steps): cliff area E, moving person, guide rails, cart coupling (DetachableJoint);
+  the carts are static until then.
+-->
+<sdf version="1.9">
+  <world name="generic">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <light type="directional" name="sun">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.3 0.2 -0.9</direction>
+    </light>
+
+    <model name="ground">
+      <static>true</static>
+      <link name="link">
+        <collision name="c"><geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry></collision>
+        <visual name="v"><geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material><ambient>0.85 0.85 0.85 1</ambient><diffuse>0.85 0.85 0.85 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- Walls, passage, obstacle, glass wall, floor markings. -->
+    <model name="room">
+      <static>true</static>
+      <pose>0 0 0 0 0 0</pose>
+      <link name="link">
+        <collision name="wall_n_c"><pose>0 3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry></collision>
+        <visual name="wall_n_v"><pose>0 3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <collision name="wall_s_c"><pose>0 -3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry></collision>
+        <visual name="wall_s_v"><pose>0 -3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <collision name="wall_e_c"><pose>3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry></collision>
+        <visual name="wall_e_v"><pose>3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <collision name="wall_w_c"><pose>-3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry></collision>
+        <visual name="wall_w_v"><pose>-3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <!-- Narrow passage 0.45 m between y = -1.00 and y = -0.55 (spec section 14). -->
+        <collision name="inner_a_c"><pose>1.5 -2.25 0.25 0 0 0</pose><geometry><box><size>0.1 2.5 0.5</size></box></geometry></collision>
+        <visual name="inner_a_v"><pose>1.5 -2.25 0.25 0 0 0</pose><geometry><box><size>0.1 2.5 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <collision name="inner_b_c"><pose>1.5 0.475 0.25 0 0 0</pose><geometry><box><size>0.1 2.05 0.5</size></box></geometry></collision>
+        <visual name="inner_b_v"><pose>1.5 0.475 0.25 0 0 0</pose><geometry><box><size>0.1 2.05 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <!-- Static obstacle. -->
+        <collision name="obstacle_c"><pose>-1.5 1 0.25 0 0 0</pose><geometry><box><size>0.4 0.4 0.5</size></box></geometry></collision>
+        <visual name="obstacle_v"><pose>-1.5 1 0.25 0 0 0</pose><geometry><box><size>0.4 0.4 0.5</size></box></geometry><material><ambient>0.8 0.4 0.1 1</ambient><diffuse>0.8 0.4 0.1 1</diffuse></material></visual>
+        <!-- Glass wall: collision only, no visual, so the GPU lidar does not see it (spec section 14). -->
+        <collision name="glass_c"><pose>-1 -2 0.4 0 0 0</pose><geometry><box><size>1 0.02 0.8</size></box></geometry></collision>
+        <!-- Floor markings only (no collision): stations S1-S3 and the dock D. -->
+        <visual name="s1_v"><pose>-3.25 0 0.0005 0 0 0</pose><geometry><box><size>0.44 0.44 0.001</size></box></geometry><material><ambient>0.2 0.7 0.2 1</ambient><diffuse>0.2 0.7 0.2 1</diffuse></material></visual>
+        <visual name="s2_v"><pose>0 3.25 0.0005 0 0 0</pose><geometry><box><size>0.44 0.44 0.001</size></box></geometry><material><ambient>0.2 0.7 0.2 1</ambient><diffuse>0.2 0.7 0.2 1</diffuse></material></visual>
+        <visual name="s3_v"><pose>3 -3.25 0.0005 0 0 0</pose><geometry><box><size>0.44 0.44 0.001</size></box></geometry><material><ambient>0.2 0.7 0.2 1</ambient><diffuse>0.2 0.7 0.2 1</diffuse></material></visual>
+        <visual name="dock_v"><pose>3.2 3.2 0.0005 0 0 0</pose><geometry><box><size>0.4 0.4 0.001</size></box></geometry><material><ambient>0.9 0.8 0.1 1</ambient><diffuse>0.9 0.8 0.1 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- Cart C1 (feet) on station S1. -->
+    <model name="cart_c1">
+      <static>true</static>
+      <pose>-3.25 0 0 0 0 0</pose>
+      <link name="link">
+        <collision name="foot0_c"><pose>0.19 0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry></collision>
+        <visual name="foot0_v"><pose>0.19 0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+        <collision name="foot1_c"><pose>0.19 -0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry></collision>
+        <visual name="foot1_v"><pose>0.19 -0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+        <collision name="foot2_c"><pose>-0.19 0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry></collision>
+        <visual name="foot2_v"><pose>-0.19 0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+        <collision name="foot3_c"><pose>-0.19 -0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry></collision>
+        <visual name="foot3_v"><pose>-0.19 -0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+        <collision name="plate_c"><pose>0 0 0.255 0 0 0</pose><geometry><box><size>0.4 0.4 0.01</size></box></geometry></collision>
+        <visual name="plate_v"><pose>0 0 0.255 0 0 0</pose><geometry><box><size>0.4 0.4 0.01</size></box></geometry><material><ambient>0.6 0.5 0.3 1</ambient><diffuse>0.6 0.5 0.3 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- Cart C2 (walled) on station S2, open side towards -y. -->
+    <model name="cart_c2">
+      <static>true</static>
+      <pose>0 3.25 0 0 0 0</pose>
+      <link name="link">
+        <collision name="foot0_c"><pose>0.19 0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry></collision>
+        <visual name="foot0_v"><pose>0.19 0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+        <collision name="foot1_c"><pose>0.19 -0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry></collision>
+        <visual name="foot1_v"><pose>0.19 -0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+        <collision name="foot2_c"><pose>-0.19 0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry></collision>
+        <visual name="foot2_v"><pose>-0.19 0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+        <collision name="foot3_c"><pose>-0.19 -0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry></collision>
+        <visual name="foot3_v"><pose>-0.19 -0.19 0.125 0 0 0</pose><geometry><box><size>0.02 0.02 0.25</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+        <collision name="plate_c"><pose>0 0 0.255 0 0 0</pose><geometry><box><size>0.4 0.4 0.01</size></box></geometry></collision>
+        <visual name="plate_v"><pose>0 0 0.255 0 0 0</pose><geometry><box><size>0.4 0.4 0.01</size></box></geometry><material><ambient>0.6 0.5 0.3 1</ambient><diffuse>0.6 0.5 0.3 1</diffuse></material></visual>
+        <collision name="wall_back_c"><pose>0 0.1775 0.14 0 0 0</pose><geometry><box><size>0.36 0.005 0.22</size></box></geometry></collision>
+        <visual name="wall_back_v"><pose>0 0.1775 0.14 0 0 0</pose><geometry><box><size>0.36 0.005 0.22</size></box></geometry><material><ambient>0.4 0.4 0.5 1</ambient><diffuse>0.4 0.4 0.5 1</diffuse></material></visual>
+        <collision name="wall_left_c"><pose>-0.1775 0 0.14 0 0 0</pose><geometry><box><size>0.005 0.36 0.22</size></box></geometry></collision>
+        <visual name="wall_left_v"><pose>-0.1775 0 0.14 0 0 0</pose><geometry><box><size>0.005 0.36 0.22</size></box></geometry><material><ambient>0.4 0.4 0.5 1</ambient><diffuse>0.4 0.4 0.5 1</diffuse></material></visual>
+        <collision name="wall_right_c"><pose>0.1775 0 0.14 0 0 0</pose><geometry><box><size>0.005 0.36 0.22</size></box></geometry></collision>
+        <visual name="wall_right_v"><pose>0.1775 0 0.14 0 0 0</pose><geometry><box><size>0.005 0.36 0.22</size></box></geometry><material><ambient>0.4 0.4 0.5 1</ambient><diffuse>0.4 0.4 0.5 1</diffuse></material></visual>
+      </link>
+    </model>
+  </world>
+</sdf>

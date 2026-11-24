@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<!--
+  Gazebo Harmonic additions for the robotROS model (softwarespezifikation.md section 14).
+  Included by robotros.urdf.xacro when sim:=true. Topic names are Gazebo transport names;
+  robotros_sim/config/gz_bridge.yaml maps them to ROS.
+  Not yet here (later steps): front contact sensor in 3 zones, ultrasonic beams, lift joint, cart coupling.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="robotros_gazebo" params="wheel_r track">
+    <gazebo reference="left_wheel">
+      <mu1>1.0</mu1><mu2>1.0</mu2>
+    </gazebo>
+    <gazebo reference="right_wheel">
+      <mu1>1.0</mu1><mu2>1.0</mu2>
+    </gazebo>
+    <gazebo reference="caster_front">
+      <mu1>0.0</mu1><mu2>0.0</mu2>
+    </gazebo>
+    <gazebo reference="caster_rear">
+      <mu1>0.0</mu1><mu2>0.0</mu2>
+    </gazebo>
+
+    <!-- GPU lidar: 720 beams, 0.15-12 m, 10 Hz, noise sigma 0.01 m (spec section 14). -->
+    <gazebo reference="laser">
+      <sensor name="lidar" type="gpu_lidar">
+        <gz_frame_id>laser</gz_frame_id>
+        <topic>/sim/scan</topic>
+        <update_rate>10</update_rate>
+        <always_on>true</always_on>
+        <visualize>false</visualize>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>720</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14159265</min_angle>
+              <max_angle>3.14159265</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.15</min>
+            <max>12.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+    </gazebo>
+
+    <gazebo>
+      <!-- Odometry frames as on the real robot: odom -> base_footprint (spec section 4). -->
+      <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
+        <left_joint>left_wheel_joint</left_joint>
+        <right_joint>right_wheel_joint</right_joint>
+        <wheel_separation>${track}</wheel_separation>
+        <wheel_radius>${wheel_r}</wheel_radius>
+        <topic>/sim/cmd_vel</topic>
+        <odom_topic>/sim/odom</odom_topic>
+        <tf_topic>/sim/tf</tf_topic>
+        <frame_id>odom</frame_id>
+        <child_frame_id>base_footprint</child_frame_id>
+        <odom_publish_frequency>50</odom_publish_frequency>
+      </plugin>
+      <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+        <topic>/sim/joint_states</topic>
+        <joint_name>left_wheel_joint</joint_name>
+        <joint_name>right_wheel_joint</joint_name>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</robot>
