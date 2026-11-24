@@ -5,8 +5,9 @@ Arguments:
   headless  true: server only, rendering without a display (CI, smoke test)
   x, y, yaw spawn pose of the robot
 
-The spec's full command (`world:=generic mode:=nav`, section 14) gets the mode argument when
-Nav2 and SLAM are added.
+  mode      none (default): only the simulation; mapping: slam_toolbox; nav: map_server, AMCL, Nav2
+            (robotros_bringup/launch/navigation.launch.py, spec section 14: `world:=generic mode:=nav`)
+  map       map YAML for mode nav
 """
 
 from launch import LaunchDescription
@@ -73,6 +74,18 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
     )
 
+    navigation = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare("robotros_bringup"), "launch", "navigation.launch.py"])
+        ),
+        launch_arguments={
+            "mode": LaunchConfiguration("mode"),
+            "map": LaunchConfiguration("map"),
+            "use_sim_time": "true",
+        }.items(),
+        condition=IfCondition(PythonExpression(["'", LaunchConfiguration("mode"), "' != 'none'"])),
+    )
+
     return LaunchDescription(
         [
             DeclareLaunchArgument("world", default_value="generic"),
@@ -80,11 +93,14 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("x", default_value="0.0"),
             DeclareLaunchArgument("y", default_value="0.0"),
             DeclareLaunchArgument("yaw", default_value="0.0"),
+            DeclareLaunchArgument("mode", default_value="none"),
+            DeclareLaunchArgument("map", default_value=""),
             gz_headless,
             gz_gui,
             description,
             spawn,
             bridge,
             hw_adapter,
+            navigation,
         ]
     )

@@ -3,6 +3,6 @@ project(robotros_bringup NONE)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config launch behavior_trees DESTINATION share/${PROJECT_NAME})
 
 ament_package()

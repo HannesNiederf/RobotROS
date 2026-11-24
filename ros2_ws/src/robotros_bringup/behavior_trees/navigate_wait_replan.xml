@@ -1,0 +1,26 @@
+<!--
+  softwarespezifikation.md section 7.4: replan at 1 Hz; on failure wait (person_wait_s, 4 s) and clear the local
+  costmap, at most 3 retries; a planning failure first clears the global costmap once and plans again.
+  The wait time is written here as a literal (4.0 s = person_wait_s start value, spez_parameter_tests.md 2.3).
+  Nav2 Jazzy, BehaviorTree.CPP v4 node and port names.
+-->
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="3" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathRecovery">
+            <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"
+                               error_code_id="{compute_path_error_code}"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+        <FollowPath path="{path}" controller_id="FollowPath" error_code_id="{follow_path_error_code}"/>
+      </PipelineSequence>
+      <Sequence name="WaitAndClear">
+        <Wait wait_duration="4.0"/>
+        <ClearEntireCostmap name="ClearLocalCostmap" service_name="local_costmap/clear_entirely_local_costmap"/>
+      </Sequence>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

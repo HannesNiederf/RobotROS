@@ -1,0 +1,29 @@
+# Velocity chain (softwarespezifikation.md section 3.3):
+#   /cmd_vel_manual, /cmd_vel_nav -> twist_mux_a -> /cmd_vel_mux_a -> collision_monitor -> /cmd_vel_cm
+#   /cmd_vel_cm, /cmd_vel_docking -> twist_mux_b -> /cmd_vel -> nano_bridge (sim: sim_hw_adapter)
+# Priorities and timeouts are chosen here: the operator's joystick beats Nav2, docking beats the collision
+# monitor output (docking runs behind the collision monitor, spec 10).
+twist_mux_a:
+  ros__parameters:
+    use_stamped: false   # the chain uses geometry_msgs/Twist (spec 5.3); twist_mux 4.x defaults to TwistStamped
+    topics:
+      manual:
+        topic: cmd_vel_manual
+        timeout: 0.5
+        priority: 20
+      nav:
+        topic: cmd_vel_nav
+        timeout: 0.5
+        priority: 10
+twist_mux_b:
+  ros__parameters:
+    use_stamped: false
+    topics:
+      collision_monitor:
+        topic: cmd_vel_cm
+        timeout: 0.5
+        priority: 10
+      docking:
+        topic: cmd_vel_docking
+        timeout: 0.5
+        priority: 20
