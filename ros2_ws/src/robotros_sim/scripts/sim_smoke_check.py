@@ -71,6 +71,11 @@ class SmokeCheck(Node):
                 return True
         return False
 
+    @staticmethod
+    def beam(scan: LaserScan, angle: float) -> float:
+        i = round((angle - scan.angle_min) / scan.angle_increment) % len(scan.ranges)
+        return float(scan.ranges[i])
+
     def sim_now(self) -> Time:
         return self.get_clock().now()
 
@@ -117,6 +122,12 @@ class SmokeCheck(Node):
             self.report(len(hits) >= 0.9 * max(n, 1), f"/scan sees the room ({len(hits)} of {n} beams hit)")
             if hits:
                 self.report(max(hits) < 5.5, f"/scan farthest hit {max(hits):.2f} m (room diagonal from centre ~4.9 m)")
+            # Robot spawns at (0, 0) facing +x. The glass wall at y = -2 (x -1.5..-0.5) has no visual, so the beam
+            # towards (-1, -2) passes it and hits the south wall (~3.9 m); the obstacle at (-1.5, 1) is at ~1.6 m.
+            glass = self.beam(s, math.atan2(-2.0, -1.0))
+            self.report(glass > 3.0, f"glass wall invisible to the lidar (beam towards it: {glass:.2f} m, > 3.0)")
+            obstacle = self.beam(s, math.atan2(1.0, -1.5))
+            self.report(1.3 < obstacle < 1.7, f"static obstacle seen (beam towards it: {obstacle:.2f} m, 1.3-1.7)")
 
         ok = self.spin_until(lambda: self.joints is not None, 30.0)
         names = set(self.joints.name) if self.joints else set()
