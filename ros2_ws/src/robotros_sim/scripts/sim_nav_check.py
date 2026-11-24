@@ -183,20 +183,24 @@ class NavCheck(Node):
         ok = False
         deadline = time.monotonic() + WAIT_S
         while not ok and time.monotonic() < deadline and active.wait_for_service(timeout_sec=5.0):
+            # The global costmap only activates once map -> odom exists, i.e. after AMCL got an initial pose
+            # (set_initial_pose: false): keep publishing it at the spawn pose until everything is active.
+            init.header.stamp = self.sim_now().to_msg()
+            self.initial.publish(init)
             future = active.call_async(Trigger.Request())
             self.spin_until(future.done, 10.0)
             ok = bool(future.done() and future.result().success)
             if not ok:
                 self.sim_sleep(1.0)
-        self.report(ok, "lifecycle_manager_navigation: all Nav2 nodes active")
+        self.report(ok, "lifecycle_manager_navigation: all Nav2 nodes active (after the initial pose)")
+        for _ in range(3):  # once more after activation, so AMCL surely has it
+            init.header.stamp = self.sim_now().to_msg()
+            self.initial.publish(init)
+            self.sim_sleep(1.0)
         ok = ok and self.nav.wait_for_server(timeout_sec=60.0)
         self.report(ok, "NavigateToPose action server available")
         if not ok:
             return 1
-        for _ in range(5):  # AMCL may come up after the action server; repeat the initial pose
-            init.header.stamp = self.sim_now().to_msg()
-            self.initial.publish(init)
-            self.sim_sleep(1.0)
         goal = NavigateToPose.Goal()
         goal.pose.header.frame_id = "map"
         goal.pose.header.stamp = self.sim_now().to_msg()
