@@ -65,6 +65,15 @@ def test_odometry_straight_and_turn() -> None:
     assert s.x == pytest.approx(1.0, abs=1e-3)
 
 
+def test_odometry_velocity_from_measured_rate() -> None:
+    odo = Odometry(GEOM_CAL)
+    odo.update(0, 0, 0, 100, 100)
+    s = odo.update(20, 3, 2, 141, 141)  # tick difference is quantised, measured rate is not
+    assert s.v == pytest.approx(141 * GEOM_CAL.metres_per_tick)
+    assert s.w == pytest.approx(0.0)
+    assert s.x == pytest.approx(2.5 * GEOM_CAL.metres_per_tick)
+
+
 def test_odometry_across_counter_overflow() -> None:
     odo = Odometry(GEOM_CAL)
     odo.update(2**32 - 10, 2**31 - 100, 2**31 - 100)
