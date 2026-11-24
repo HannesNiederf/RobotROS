@@ -95,7 +95,7 @@ jobs:
       - name: Simulation smoke test
         run: tools/sim_smoke.sh build/sim_smoke
       - name: Mapping and navigation in the simulation
-        run: tools/sim_nav.sh build/sim_nav
+        run: tools/sim_nav.sh --acceptance build/sim_nav
       - name: Keep simulation logs
         if: always()
         uses: actions/upload-artifact@v4
