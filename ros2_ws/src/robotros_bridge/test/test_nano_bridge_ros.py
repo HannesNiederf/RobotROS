@@ -119,7 +119,10 @@ def test_bridge_against_fake_nanos(system) -> None:  # noqa: ANN001
         time.sleep(0.05)
     last = seen["odom"][-1]
     assert last.pose.pose.position.x > 0.04
-    assert 0.03 < last.twist.twist.linear.x <= 0.055
+    recent = [m.twist.twist.linear.x for m in seen["odom"][-25:]]
+    mean = sum(recent) / len(recent)
+    assert 0.03 < mean <= 0.052, recent  # D-24 cap 0.05 m/s; one tick/s is about 0.00035 m/s
+    assert max(recent) <= 0.052, recent
 
     time.sleep(1.0)  # cmd_vel timeout 0.5 s -> zero setpoints
     assert abs(seen["odom"][-1].twist.twist.linear.x) < 0.005

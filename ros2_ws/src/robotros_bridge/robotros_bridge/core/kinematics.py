@@ -95,7 +95,17 @@ class Odometry:
         """Forget the last sample (after a Nano reset its counters restart); the pose is kept."""
         self._last = None
 
-    def update(self, t_ms: int, l_ticks: int, r_ticks: int) -> OdomState:
+    def update(
+        self, t_ms: int, l_ticks: int, r_ticks: int, l_tps: int | None = None, r_tps: int | None = None
+    ) -> OdomState:
+        """Integrate one ``$ODO``. Velocities come from the Nano's measured rates (``l_tps``/``r_tps``,
+        averaged over two 20 ms periods on the Nano) when given; otherwise from the tick difference,
+        which is quantised to whole ticks per 20 ms and therefore noisy at low speed."""
+        if l_tps is not None and r_tps is not None:
+            v_l = l_tps * self.geom.metres_per_tick
+            v_r = r_tps * self.geom.metres_per_tick
+            self.state.v = (v_l + v_r) / 2.0
+            self.state.w = (v_r - v_l) / self.geom.track
         if self._last is None:
             self._last = (t_ms, l_ticks, r_ticks)
             return self.state
@@ -111,7 +121,7 @@ class Odometry:
         s.x += ds * math.cos(mid)
         s.y += ds * math.sin(mid)
         s.yaw = math.atan2(math.sin(s.yaw + dyaw), math.cos(s.yaw + dyaw))
-        if dt > 0:
+        if dt > 0 and (l_tps is None or r_tps is None):
             s.v = ds / dt
             s.w = dyaw / dt
         per_tick = 2.0 * math.pi / self.geom.ticks_per_wheel_rev

@@ -297,7 +297,9 @@ class NanoBridge(Node):
         self._publish_safety(self._stamp(), values)
 
     def _publish_odom(self, stamp: Time, msg: p.Message) -> None:
-        s = self.odom.update(int(msg["t_ms"]), int(msg["l_ticks"]), int(msg["r_ticks"]))
+        s = self.odom.update(
+            int(msg["t_ms"]), int(msg["l_ticks"]), int(msg["r_ticks"]), int(msg["l_tps"]), int(msg["r_tps"])
+        )
         qx, qy, qz, qw = yaw_to_quaternion(s.yaw)
         odom = OdometryMsg()
         odom.header = self._header(stamp, self.odom_frame)
