@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+<!--
+  robotROS robot model (softwarespezifikation.md sections 3.2, 4 and 14).
+  Geometry comes from robotros_bringup/config/robot.yaml; nothing here duplicates a value from there.
+  Frames: base_footprint (ground, below the wheel axle) -> base_link (wheel axle centre)
+          -> laser, us_front, us_rear, bumper, left/right wheel, casters.
+  Values marked "chosen here" are not fixed by the spec (placeholders until CAD, REQ-MECH-05).
+  Args:
+    robot_yaml  path of robot.yaml (default: the installed robotros_bringup copy)
+    sim         true adds the Gazebo Harmonic plugins and sensors (robotros_sim)
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robotros">
+  <xacro:arg name="robot_yaml" default="$(find robotros_bringup)/config/robot.yaml"/>
+  <xacro:arg name="sim" default="false"/>
+
+  <xacro:property name="cfg" value="${xacro.load_yaml('$(arg robot_yaml)')}"/>
+
+  <!-- From robot.yaml. Effective geometry includes the calibration scales (spez_parameter_tests.md C2, C3). -->
+  <xacro:property name="length" value="${cfg['robot_length']}"/>
+  <xacro:property name="width" value="${cfg['robot_width']}"/>
+  <xacro:property name="wheel_r" value="${cfg['wheel_radius_m'] * cfg['wheel_radius_scale']}"/>
+  <xacro:property name="track" value="${cfg['track_width_m'] * cfg['track_scale']}"/>
+  <xacro:property name="lidar_x" value="${cfg['lidar_x']}"/>
+  <xacro:property name="lidar_z" value="${cfg['lidar_z']}"/>
+  <xacro:property name="lidar_yaw" value="${cfg['lidar_yaw_rad']}"/>
+  <xacro:property name="us_front_x" value="${cfg['us_front_x']}"/>
+  <xacro:property name="us_rear_x" value="${cfg['us_rear_x']}"/>
+  <xacro:property name="us_pitch" value="${radians(cfg['us_pitch_deg'])}"/>
+  <xacro:property name="bumper_x" value="${cfg['bumper_front_x']}"/>
+
+  <!-- Chosen here (not in the spec or robot.yaml yet). -->
+  <xacro:property name="body_h" value="0.08"/>          <!-- body box height -->
+  <xacro:property name="body_bottom" value="-0.02"/>    <!-- body underside relative to the axle -->
+  <xacro:property name="wheel_w" value="0.025"/>
+  <xacro:property name="caster_r" value="0.012"/>
+  <xacro:property name="caster_x" value="${length / 2 - 0.03}"/>
+  <xacro:property name="us_z" value="0.04"/>            <!-- ultrasonic sensors above the axle -->
+  <xacro:property name="bumper_z" value="0.0"/>
+  <xacro:property name="mass_body" value="2.5"/>
+  <xacro:property name="mass_wheel" value="0.1"/>
+
+  <link name="base_footprint"/>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 ${body_bottom + body_h / 2}"/>
+      <geometry><box size="${length} ${width} ${body_h}"/></geometry>
+      <material name="body"><color rgba="0.2 0.4 0.8 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${body_bottom + body_h / 2}"/>
+      <geometry><box size="${length} ${width} ${body_h}"/></geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 ${body_bottom + body_h / 2}"/>
+      <mass value="${mass_body}"/>
+      <inertia ixx="${mass_body * (width*width + body_h*body_h) / 12}" ixy="0" ixz="0"
+               iyy="${mass_body * (length*length + body_h*body_h) / 12}" iyz="0"
+               izz="${mass_body * (length*length + width*width) / 12}"/>
+    </inertial>
+  </link>
+
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 ${wheel_r}"/>
+  </joint>
+
+  <xacro:macro name="wheel" params="side y">
+    <link name="${side}_wheel">
+      <visual>
+        <origin rpy="${pi/2} 0 0"/>
+        <geometry><cylinder radius="${wheel_r}" length="${wheel_w}"/></geometry>
+        <material name="wheel"><color rgba="0.1 0.1 0.1 1"/></material>
+      </visual>
+      <collision>
+        <origin rpy="${pi/2} 0 0"/>
+        <geometry><cylinder radius="${wheel_r}" length="${wheel_w}"/></geometry>
+      </collision>
+      <inertial>
+        <origin rpy="${pi/2} 0 0"/>
+        <mass value="${mass_wheel}"/>
+        <inertia ixx="${mass_wheel * (3*wheel_r*wheel_r + wheel_w*wheel_w) / 12}" ixy="0" ixz="0"
+                 iyy="${mass_wheel * (3*wheel_r*wheel_r + wheel_w*wheel_w) / 12}" iyz="0"
+                 izz="${mass_wheel * wheel_r * wheel_r / 2}"/>
+      </inertial>
+    </link>
+    <!-- Joint names are the ones nano_bridge publishes on /joint_states. -->
+    <joint name="${side}_wheel_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="${side}_wheel"/>
+      <origin xyz="0 ${y} 0"/>
+      <axis xyz="0 1 0"/>
+    </joint>
+  </xacro:macro>
+  <xacro:wheel side="left" y="${track / 2}"/>
+  <xacro:wheel side="right" y="${-track / 2}"/>
+
+  <xacro:macro name="caster" params="name x">
+    <link name="${name}">
+      <visual><geometry><sphere radius="${caster_r}"/></geometry></visual>
+      <collision><geometry><sphere radius="${caster_r}"/></geometry></collision>
+      <inertial>
+        <mass value="0.02"/>
+        <inertia ixx="${0.4 * 0.02 * caster_r * caster_r}" ixy="0" ixz="0"
+                 iyy="${0.4 * 0.02 * caster_r * caster_r}" iyz="0" izz="${0.4 * 0.02 * caster_r * caster_r}"/>
+      </inertial>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="${name}"/>
+      <origin xyz="${x} 0 ${caster_r - wheel_r}"/>
+    </joint>
+  </xacro:macro>
+  <xacro:caster name="caster_front" x="${caster_x}"/>
+  <xacro:caster name="caster_rear" x="${-caster_x}"/>
+
+  <!-- Lidar mount (lidar_x, lidar_z relative to base_link as in spec section 4, yaw from calibration C7). -->
+  <link name="laser">
+    <visual>
+      <origin xyz="0 0 -0.015"/>
+      <geometry><cylinder radius="0.035" length="0.04"/></geometry>
+      <material name="lidar"><color rgba="0.05 0.05 0.05 1"/></material>
+    </visual>
+  </link>
+  <joint name="laser_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="laser"/>
+    <origin xyz="${lidar_x} 0 ${lidar_z}" rpy="0 0 ${lidar_yaw}"/>
+  </joint>
+
+  <!-- Ultrasonic sensors, tilted down by us_pitch_deg (positive pitch turns x towards the ground). -->
+  <link name="us_front"/>
+  <joint name="us_front_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="us_front"/>
+    <origin xyz="${us_front_x} 0 ${us_z}" rpy="0 ${us_pitch} 0"/>
+  </joint>
+  <link name="us_rear"/>
+  <joint name="us_rear_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="us_rear"/>
+    <origin xyz="${us_rear_x} 0 ${us_z}" rpy="0 ${us_pitch} ${pi}"/>
+  </joint>
+
+  <link name="bumper"/>
+  <joint name="bumper_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="bumper"/>
+    <origin xyz="${bumper_x} 0 ${bumper_z}"/>
+  </joint>
+
+  <xacro:if value="$(arg sim)">
+    <xacro:include filename="robotros.gazebo.xacro"/>
+    <xacro:robotros_gazebo wheel_r="${wheel_r}" track="${track}"/>
+  </xacro:if>
+</robot>
