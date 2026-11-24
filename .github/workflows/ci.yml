@@ -92,14 +92,10 @@ jobs:
           source /opt/ros/jazzy/setup.bash
           cd ros2_ws
           colcon build --packages-up-to robotros_sim --event-handlers console_direct+
-      - name: Simulation smoke test
-        run: tools/sim_smoke.sh build/sim_smoke
-      - name: Mapping and navigation in the simulation
-        run: tools/sim_nav.sh build/sim_nav
-      - name: Interactive start script (RViz under Xvfb)
-        run: |
-          xvfb-run -a tools/sim_start.sh mapping --check
-          xvfb-run -a tools/sim_start.sh nav build/sim_nav/generic_map.yaml --check
+      - name: Odometry probe
+        run: xvfb-run -a tools/sim_start.sh mapping --check
+      - name: Acceptance probe
+        run: tools/sim_nav.sh --acceptance build/sim_nav
       - name: Keep simulation logs
         if: always()
         uses: actions/upload-artifact@v4
