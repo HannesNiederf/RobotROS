@@ -3,7 +3,8 @@
 
   mapping: sim_helper armed the robot, /map arrives, /cmd_vel_manual moves the robot, the wheel odometry
            (/odom) follows the true motion (/sim/ground_truth) when turning and driving.
-  nav:     sim_helper armed the robot and set the initial pose (/amcl_pose), Nav2 is active, a goal on
+  nav:     sim_helper armed the robot and set the initial pose (/amcl_pose), Nav2 is active, the recovery's
+           BackUp reverses the robot (ADR 0002), a goal on
            /goal_pose (what RViz's "2D Goal Pose" publishes) makes the robot drive.
 Exit code 0 = pass. Durations in simulation time, the wall clock only bounds the waiting.
 """
@@ -17,7 +18,9 @@ from collections.abc import Callable
 
 import rclpy
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, Twist
+from nav2_msgs.action import BackUp
 from nav_msgs.msg import OccupancyGrid, Odometry
+from rclpy.action import ActionClient
 from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
@@ -131,6 +134,28 @@ class StartCheck(Node):
         print(f"MEASURE real time factor {rtf:.2f}; /scan stamp age at receipt: median "
               f"{ages[len(ages) // 2]:.3f} s, max {ages[-1]:.3f} s, n={len(self.scan_ages)}", flush=True)
 
+    def backup_check(self) -> None:
+        """The recovery's BackUp (ADR 0002) reaches the wheels through smoother, twist_mux and collision monitor."""
+        client = ActionClient(self, BackUp, "/backup")
+        if not client.wait_for_server(timeout_sec=30.0):
+            self.report(False, "behavior_server /backup available")
+            return
+        p0, yaw = self.truth.pose.pose.position, self.yaw_of(self.truth)
+        goal = BackUp.Goal()
+        goal.target.x, goal.speed, goal.time_allowance.sec = 0.10, 0.05, 10
+        sent = client.send_goal_async(goal)
+        self.spin_until(sent.done, 10.0)
+        handle = sent.result()
+        if handle is None or not handle.accepted:
+            self.report(False, "BackUp goal accepted")
+            return
+        res = handle.get_result_async()
+        self.spin_until(res.done, 60.0)
+        self.spin_until(lambda: False, 1.0)
+        p = self.truth.pose.pose.position
+        along = (p.x - p0.x) * math.cos(yaw) + (p.y - p0.y) * math.sin(yaw)
+        self.report(-0.13 <= along <= -0.07, f"recovery BackUp 0.10 m reverses the robot (moved {along:+.3f} m)")
+
     def moved_from(self, x0: float, y0: float) -> float:
         p = self.truth.pose.pose.position
         return math.hypot(p.x - x0, p.y - y0)
@@ -174,6 +199,9 @@ class StartCheck(Node):
                 if not ok:
                     self.spin_until(lambda: False, 1.0)
             self.report(ok, "Nav2 active")
+            self.backup_check()
+            p0 = self.truth.pose.pose.position
+            x0, y0 = p0.x, p0.y
             goal = PoseStamped()
             goal.header.frame_id = "map"
             goal.pose.position.x, goal.pose.orientation.z, goal.pose.orientation.w = -1.0, 1.0, 0.0
