@@ -321,7 +321,8 @@ class NavCheck(Node):
         if self.amcl is not None:
             a = self.amcl.pose.pose.position
             loc = math.hypot(a.x - q.position.x, a.y - q.position.y)
-        print(f"info  run {run}: true error {err:.3f} m, {math.degrees(dyaw):.1f} deg", flush=True)
+        print(f"info  run {run}: true error {err:.3f} m, {math.degrees(dyaw):.1f} deg; end pose "
+              f"({q.position.x:.2f}, {q.position.y:.2f}, {math.degrees(yaw_of(q.orientation)):.0f} deg)", flush=True)
         return err, dyaw, loc
 
     def navigate(self, goals: list[tuple[float, float, float]], runs: int, acceptance: bool) -> int:
