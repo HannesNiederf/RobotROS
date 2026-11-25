@@ -21,11 +21,13 @@ jobs:
       - name: Tool and core logic tests
         run: |
           python3 -m pip install --break-system-packages pytest ruff pyyaml numpy
-          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test ros2_ws/src/robotros_mission/test -q
+          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test ros2_ws/src/robotros_mission/test ros2_ws/src/robotros_map/test -q
       - name: Ruff
         run: ruff check .
       - name: i18n files (web_ui/i18n)
         run: python3 tools/check_i18n.py
+      - name: Web UI unit tests (node --test)
+        run: node --test web_ui/test/*.test.mjs
       - name: Protocol vectors are up to date
         run: |
           python3 tools/gen_protocol_vectors.py | diff - firmware/test/vectors/protocol_vectors.json
@@ -86,9 +88,13 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y ros-dev-tools libegl1 libgl1-mesa-dri mesa-utils xvfb xauth
+          apt-get install -y ros-dev-tools libegl1 libgl1-mesa-dri mesa-utils xvfb xauth python3-pip
           rosdep update --rosdistro jazzy
           rosdep install --from-paths ros2_ws/src --ignore-src -r -y --rosdistro jazzy
+      - name: Headless browser for the web UI check (Playwright Chromium)
+        run: |
+          python3 -m pip install --break-system-packages playwright
+          python3 -m playwright install --with-deps chromium
       - name: Build
         run: |
           source /opt/ros/jazzy/setup.bash
@@ -101,7 +107,7 @@ jobs:
       - name: Interactive start script (RViz under Xvfb)
         run: |
           xvfb-run -a tools/sim_start.sh mapping --check
-          xvfb-run -a tools/sim_start.sh nav build/sim_nav/generic_map.yaml --check
+          WEB_UI_CHECK=1 xvfb-run -a tools/sim_start.sh nav build/sim_nav/generic_map.yaml --check
       - name: Keep simulation logs
         if: always()
         uses: actions/upload-artifact@v4

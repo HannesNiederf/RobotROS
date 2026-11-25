@@ -1,0 +1,29 @@
+/* Spec 13.1: landscape, touch only, touch targets >= 56 px, font >= 18 px, designed for 1368 x 912 CSS px. */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; font-size: 18px; background: #f2f2f2; color: #1d1d1d; }
+body { display: flex; flex-direction: column; user-select: none; touch-action: none; }
+header { display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: #263238; color: #fff; min-height: 72px; }
+.brand { font-weight: 700; font-size: 22px; }
+.pill { padding: 10px 14px; border-radius: 28px; background: #455a64; white-space: nowrap; min-height: 44px; display: flex; align-items: center; }
+#conn[data-state="connected"] { background: #2e7d32; }
+#conn[data-state="lost"] { background: #c62828; }
+#safety[data-state="3"] { background: #2e7d32; }
+#safety[data-state="1"] { background: #c62828; }
+#safety[data-state="0"], #safety[data-state="2"] { background: #ef6c00; }
+.activity { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.activity > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity .label { color: #b0bec5; }
+.langs { display: flex; gap: 6px; }
+button { min-width: 56px; min-height: 56px; font-size: 18px; border-radius: 10px; border: 1px solid #90a4ae; background: #eceff1; padding: 0 18px; }
+.langs button { background: #37474f; color: #fff; border-color: #546e7a; }
+.langs button.active { background: #fff; color: #263238; }
+main { position: relative; flex: 1; min-height: 0; }
+#map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hint { position: absolute; left: 14px; bottom: 10px; color: #546e7a; pointer-events: none; }
+.dialog { position: absolute; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
+.dialog[hidden], .overlay[hidden] { display: none; }
+.dialog-box { background: #fff; border-radius: 14px; padding: 22px 26px; min-width: 420px; display: flex; flex-direction: column; gap: 16px; }
+.dialog-title { font-size: 22px; font-weight: 700; }
+.dialog-buttons { display: flex; justify-content: flex-end; gap: 12px; }
+button.primary { background: #1f5fd1; color: #fff; border-color: #1f5fd1; }
+.overlay { position: fixed; inset: 72px 0 0 0; background: rgba(198,40,40,0.85); color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 40px; }
