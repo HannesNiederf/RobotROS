@@ -1,8 +1,11 @@
 name: ci
 
 on:
+  # Feature branches are tested through their pull request only; a push trigger as well ran every job twice and
+  # used up the free Actions minutes of the private repository (25.11.2026). Branches without a PR (probes):
+  # start the workflow by hand (workflow_dispatch).
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
