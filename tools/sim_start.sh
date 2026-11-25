@@ -98,7 +98,29 @@ trap 'exit 130' INT TERM
 
 if [ "$CHECK" = true ]; then
   rc=0
+  # The two activity viewers (ADR 0004) run along, in German, and must show what the check provokes.
+  VIEW_LOG="$LOG_DIR/$MODE.view"
+  ros2 run robotros_mission activity_view now --lang de --i18n "$ROOT/web_ui/i18n" > "$VIEW_LOG.now" 2>&1 &
+  VIEW_NOW=$!
+  ros2 run robotros_mission activity_view plan --lang de --i18n "$ROOT/web_ui/i18n" > "$VIEW_LOG.plan" 2>&1 &
+  VIEW_PLAN=$!
   python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/sim_start_check.py" "$MODE" || rc=$?
+  kill -INT "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
+  wait "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
+  echo "---- activity_view now (German) ----"
+  tr '\r' '\n' < "$VIEW_LOG.now" | grep -a . | tail -n 25 || true
+  if [ "$MODE" = nav ]; then
+    want_now="Ziel erreicht"; want_plan="Fahrt zu"
+  else
+    want_now="Wird von Hand gefahren"; want_plan="Nichts geplant"
+  fi
+  if grep -aq "$want_now" "$VIEW_LOG.now" && grep -aq "$want_plan" "$VIEW_LOG.plan"; then
+    echo "ok    activity_view shows '$want_now' (now) and '$want_plan' (plan)"
+  else
+    echo "FAIL  activity_view did not show '$want_now' / '$want_plan'"
+    tail -n 20 "$VIEW_LOG.plan"
+    rc=1
+  fi
   if pgrep -g "$LAUNCH_PID" -x rviz2 > /dev/null; then
     echo "ok    RViz is running"
   else
