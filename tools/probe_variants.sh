@@ -37,4 +37,4 @@ exec(expr)
 yaml.safe_dump(d, open(path, "w"))
 PY
 python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/world_map.py" "$ROOT/ros2_ws/install/robotros_sim/share/robotros_sim/worlds/generic.sdf" "$LOG_DIR/world_map"
-phase sharp mode:=nav "map:=$LOG_DIR/world_map.yaml" -- nav --goal 2.5 -0.775 0.0 --goal 0.7 -1.5 0.0 --runs 11 || true
+phase accept mode:=nav "map:=$LOG_DIR/world_map.yaml" -- nav --goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0 --runs 10 --acceptance || true
