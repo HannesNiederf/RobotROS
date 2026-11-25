@@ -6,6 +6,9 @@
 #                                                      default ~/robotros_karte
 #   tools/sim_start.sh nav [MAP.yaml] [--gazebo-gui]   navigate with a saved map (default ~/robotros_karte.yaml):
 #                                                      set goals in RViz with "2D Goal Pose"
+#   tools/sim_start.sh now                            what the robot does now, running log (another terminal)
+#   tools/sim_start.sh plan                           what the robot intends (another terminal)
+#                                                      language from $LANG (de/it/en), or add --lang de|en|it
 #   --check            test mode (CI): no keyboard, runs sim_start_check.py and exits with its result
 #
 # The robot is armed once automatically and, in mode nav, gets its initial pose automatically
@@ -20,9 +23,12 @@ MAP_DEFAULT="$HOME/robotros_karte"
 GZ_GUI=false
 CHECK=false
 ARG=""
+VIEW_ARGS=()
 for a in "$@"; do
   case "$a" in
     --gazebo-gui) GZ_GUI=true ;;
+    --lang) VIEW_ARGS+=(--lang) ;;
+    de|en|it) VIEW_ARGS+=("$a") ;;
     --check) CHECK=true ;;
     *) ARG="$a" ;;
   esac
@@ -50,6 +56,9 @@ case "$MODE" in
     NAME="${ARG:-$MAP_DEFAULT}"
     exec ros2 run nav2_map_server map_saver_cli -f "$NAME" --ros-args -p save_map_timeout:=20.0
     ;;
+  now|plan)
+    exec ros2 run robotros_mission activity_view "$MODE" --i18n "$ROOT/web_ui/i18n" "${VIEW_ARGS[@]}"
+    ;;
   mapping) LAUNCH_ARGS=(mode:=mapping) ;;
   nav)
     MAP="${ARG:-$MAP_DEFAULT.yaml}"
@@ -60,7 +69,7 @@ case "$MODE" in
     LAUNCH_ARGS=(mode:=nav "map:=$(realpath "$MAP")")
     ;;
   *)
-    sed -n '2,13p' "$0"
+    sed -n '2,16p' "$0"
     exit 1
     ;;
 esac
@@ -89,7 +98,31 @@ trap 'exit 130' INT TERM
 
 if [ "$CHECK" = true ]; then
   rc=0
+  # The two activity viewers (ADR 0004) run along, in German, and must show what the check provokes.
+  VIEW_LOG="$LOG_DIR/$MODE.view"
+  VIEW="$ROOT/ros2_ws/install/robotros_mission/lib/robotros_mission/activity_view"
+  "$VIEW" now --lang de --i18n "$ROOT/web_ui/i18n" > "$VIEW_LOG.now" 2>&1 &
+  VIEW_NOW=$!
+  "$VIEW" plan --lang de --i18n "$ROOT/web_ui/i18n" > "$VIEW_LOG.plan" 2>&1 &
+  VIEW_PLAN=$!
   python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/sim_start_check.py" "$MODE" || rc=$?
+  kill -INT "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
+  for _ in $(seq 1 20); do kill -0 "$VIEW_NOW" 2> /dev/null || kill -0 "$VIEW_PLAN" 2> /dev/null || break; sleep 0.25; done
+  kill -KILL "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
+  echo "---- activity_view now (German) ----"
+  tr '\r' '\n' < "$VIEW_LOG.now" | grep -a . | tail -n 25 || true
+  if [ "$MODE" = nav ]; then
+    want_now="Ziel erreicht"; want_plan="Fahrt zu"
+  else
+    want_now="Wird von Hand gefahren"; want_plan="Nichts geplant"
+  fi
+  if grep -aq "$want_now" "$VIEW_LOG.now" && grep -aq "$want_plan" "$VIEW_LOG.plan"; then
+    echo "ok    activity_view shows '$want_now' (now) and '$want_plan' (plan)"
+  else
+    echo "FAIL  activity_view did not show '$want_now' / '$want_plan'"
+    tail -n 20 "$VIEW_LOG.plan"
+    rc=1
+  fi
   if pgrep -g "$LAUNCH_PID" -x rviz2 > /dev/null; then
     echo "ok    RViz is running"
   else

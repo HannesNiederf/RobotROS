@@ -21,9 +21,11 @@ jobs:
       - name: Tool and core logic tests
         run: |
           python3 -m pip install --break-system-packages pytest ruff pyyaml numpy
-          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test -q
+          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test ros2_ws/src/robotros_mission/test -q
       - name: Ruff
         run: ruff check .
+      - name: i18n files (web_ui/i18n)
+        run: python3 tools/check_i18n.py
       - name: Protocol vectors are up to date
         run: |
           python3 tools/gen_protocol_vectors.py | diff - firmware/test/vectors/protocol_vectors.json

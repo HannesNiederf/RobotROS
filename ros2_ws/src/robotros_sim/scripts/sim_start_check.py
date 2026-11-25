@@ -5,7 +5,8 @@
            (/odom) follows the true motion (/sim/ground_truth) when turning and driving.
   nav:     sim_helper armed the robot and set the initial pose (/amcl_pose), Nav2 is active, the recovery's
            BackUp reverses the robot (ADR 0002), a goal on
-           /goal_pose (what RViz's "2D Goal Pose" publishes) makes the robot drive.
+           /goal_pose (what RViz's "2D Goal Pose" publishes) makes the robot drive, /activity (ADR 0004)
+           reports driving, the plan and "goal reached".
 Exit code 0 = pass. Durations in simulation time, the wall clock only bounds the waiting.
 """
 
@@ -25,7 +26,7 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
-from robotros_interfaces.msg import SafetyState
+from robotros_interfaces.msg import ActivityState, SafetyState
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Trigger
 
@@ -54,6 +55,9 @@ class StartCheck(Node):
         self.scan_ages: list[float] = []
         self.create_subscription(LaserScan, "/scan", self._on_scan, qos_profile_sensor_data)
         self.manual = self.create_publisher(Twist, "/cmd_vel_manual", 10)
+        self.now_keys: list[str] = []
+        self.plan_keys: set[str] = set()
+        self.create_subscription(ActivityState, "/activity", self._on_activity, 10)
         self.goal = self.create_publisher(PoseStamped, "/goal_pose", 10)
         self.failures = 0
 
@@ -68,6 +72,13 @@ class StartCheck(Node):
             if cond():
                 return True
         return False
+
+    def _on_activity(self, msg: ActivityState) -> None:
+        if not self.now_keys or self.now_keys[-1] != msg.now_key:
+            self.now_keys.append(msg.now_key)
+            print(f"info  /activity now: {msg.now_key} {list(msg.now_args)} | plan: {msg.plan_key} "
+                  f"{list(msg.plan_args)}", flush=True)
+        self.plan_keys.add(msg.plan_key)
 
     def _on_scan(self, msg: LaserScan) -> None:
         now = self.get_clock().now().nanoseconds
@@ -211,6 +222,13 @@ class StartCheck(Node):
             moved = self.spin_until(lambda: self.moved_from(x0, y0) > 0.2, 120.0)
             d = self.moved_from(x0, y0)
             self.report(moved, f"goal on /goal_pose (RViz '2D Goal Pose') makes the robot drive ({d:.2f} m)")
+            # Activity display (ADR 0004): driving or turning while the goal runs, a plan, then "goal reached".
+            reached = self.spin_until(lambda: "activity.goal_reached" in self.now_keys, 120.0)
+            self.report(any(k.startswith(("activity.driving", "activity.turning")) for k in self.now_keys),
+                        "/activity reported driving or turning during the goal")
+            planned = bool(self.plan_keys & {"plan.goto", "plan.goto_eta"})
+            self.report(planned, "/activity reported the plan to the goal")
+            self.report(reached, "/activity reported 'goal reached'")
         return 1 if self.failures else 0
 
 
