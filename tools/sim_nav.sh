@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
 # Headless mapping + navigation check (softwarespezifikation.md sections 7.1, 7.2, 14):
 #   1. simulation with mode:=mapping: drive a pattern, check the slam_toolbox map, save it
-#   2. simulation with mode:=nav and that map: AMCL, Nav2 goal, check the true end pose
+#   2. simulation with mode:=nav: AMCL, Nav2 goals, check the true end pose. The map for this phase is the
+#      ground-truth lidar map of the world (world_map.py), so the end errors measure navigation and AMCL, not
+#      the varying quality of one SLAM run; the SLAM map of phase 1 is checked there and used by sim_start --check.
 # Usage (after `colcon build` in ros2_ws): tools/sim_nav.sh [--acceptance] [log_dir]
-#   default       goals A (-2.3, 0, pi) and B (0.7, -1.5, 0), one run each, gross limits per run
+#   default       goals A (-2.3, 0, pi), B (0.7, -1.5, 0), P (2.5, -0.775, 0) behind the 0.45 m passage (west to
+#                 east); one run each, gross limits per run. The passage run is informational (WARN, not FAIL):
+#                 it is not reliable yet (ADR 0003, open).
 #   --acceptance  M1-03 in simulation: 10 runs A <-> B, >= 9 within 0.10 m / 10 deg
 # Isolation as tools/sim_smoke.sh: own ROS domain (not 42), localhost only, own Gazebo partition.
 set -eo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NAV_ARGS=(--goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0)
+NAV_ARGS=(--goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0 --goal 2.5 -0.775 0.0 --info-run 3)
 if [ "${1:-}" = "--acceptance" ]; then
-  NAV_ARGS+=(--runs 10 --acceptance)
+  NAV_ARGS=(--goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0 --runs 10 --acceptance)
   shift
 fi
 LOG_DIR="${1:-$ROOT/build/sim_nav}"
@@ -71,7 +75,11 @@ run_phase() {  # name, launch args..., -- , check args...
 status=0
 run_phase mapping mode:=mapping -- mapping --map-out "$MAP" || status=$?
 if [ "$status" -eq 0 ]; then
-  run_phase nav mode:=nav "map:=$MAP.yaml" -- nav "${NAV_ARGS[@]}" || status=$?
+  WORLD="$ROOT/ros2_ws/install/robotros_sim/share/robotros_sim/worlds/generic.sdf"
+  python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/world_map.py" "$WORLD" "$LOG_DIR/world_map" || status=$?
+fi
+if [ "$status" -eq 0 ]; then
+  run_phase nav mode:=nav "map:=$LOG_DIR/world_map.yaml" -- nav "${NAV_ARGS[@]}" || status=$?
 fi
 echo "SIM NAV: $([ "$status" -eq 0 ] && echo PASS || echo FAIL)"
 exit "$status"

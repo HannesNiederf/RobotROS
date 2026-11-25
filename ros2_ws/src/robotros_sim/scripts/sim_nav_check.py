@@ -22,7 +22,8 @@ from collections.abc import Callable
 import rclpy
 from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
 from nav2_msgs.action import NavigateToPose
-from nav_msgs.msg import OccupancyGrid, Odometry
+from nav2_msgs.msg import CollisionMonitorState
+from nav_msgs.msg import OccupancyGrid, Odometry, Path
 from rclpy.action import ActionClient
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -34,6 +35,9 @@ from robotros_interfaces.srv import SetArm
 from std_srvs.srv import Trigger
 
 WAIT_S = 180.0  # wall-clock bound for start-up of Gazebo plus the stack on a slow CI runner
+# Narrow passage of worlds/generic.sdf (0.45 m, spec section 14): wall x = 1.5, free between these y values.
+PASSAGE_X = 1.5
+PASSAGE_Y = (-1.0, -0.55)
 
 
 def yaw_of(q) -> float:  # noqa: ANN001
@@ -44,6 +48,7 @@ class NavCheck(Node):
     def __init__(self) -> None:
         super().__init__("sim_nav_check", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.failures = 0
+        self.info_only = False  # set for runs given with --info-run: their failures are printed, not counted
         self.map: OccupancyGrid | None = None
         self.truth: Odometry | None = None
         self.safety: SafetyState | None = None
@@ -59,6 +64,10 @@ class NavCheck(Node):
         self.initial = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
         self.arm_client = self.create_client(SetArm, "/hw/set_arm")
         self.nav = ActionClient(self, NavigateToPose, "/navigate_to_pose")
+        # Diagnostics while a goal runs (MEASURE lines): AMCL corrections, planned path, collision monitor.
+        self.track: dict | None = None
+        self.create_subscription(Path, "/plan", self._on_plan, 10)
+        self.create_subscription(CollisionMonitorState, "/collision_monitor_state", self._on_cm, 10)
 
     def _on_map(self, msg: OccupancyGrid) -> None:
         self.map = msg
@@ -70,7 +79,59 @@ class NavCheck(Node):
         self.safety = msg
 
     def _on_amcl(self, msg: PoseWithCovarianceStamped) -> None:
+        if self.track is not None and self.truth is not None:
+            a, t = msg.pose.pose.position, self.truth.pose.pose.position
+            err = math.hypot(a.x - t.x, a.y - t.y)
+            prev = self.track.get("last")
+            if prev is not None:
+                # Jump of one AMCL update = change of the AMCL pose minus the true motion in the same interval.
+                jump = math.hypot((a.x - prev[0]) - (t.x - prev[2]), (a.y - prev[1]) - (t.y - prev[3]))
+                self.track["jumps"].append(jump)
+            self.track["last"] = (a.x, a.y, t.x, t.y)
+            self.track["errs"].append(err)
         self.amcl = msg
+
+    def _on_plan(self, msg: Path) -> None:
+        if self.track is not None and msg.poses:
+            self.track["plans"] += 1
+            gap = [p.pose.position for p in msg.poses if abs(p.pose.position.x - PASSAGE_X) < 0.06]
+            if gap and all(PASSAGE_Y[0] < p.y < PASSAGE_Y[1] for p in gap):
+                self.track["plans_through_passage"] += 1
+                centre = (PASSAGE_Y[0] + PASSAGE_Y[1]) / 2
+                self.track["plan_offset"] = max(self.track["plan_offset"], max(abs(p.y - centre) for p in gap))
+
+    def _on_cm(self, msg: CollisionMonitorState) -> None:
+        if self.track is not None and msg.action_type != 0:
+            self.track["cm_events"] += 1
+
+    def track_start(self) -> None:
+        self.track = {"jumps": [], "errs": [], "last": None, "plans": 0, "plans_through_passage": 0,
+                      "cm_events": 0, "min_clear": math.inf, "crossed": False, "plan_offset": 0.0}
+
+    def track_truth(self) -> None:
+        """Clearance of the true footprint centre to the passage walls while the robot is inside the passage."""
+        if self.track is None or self.truth is None:
+            return
+        t = self.truth.pose.pose.position
+        if abs(t.x - PASSAGE_X) < 0.2 and PASSAGE_Y[0] - 0.1 < t.y < PASSAGE_Y[1] + 0.1:
+            self.track["min_clear"] = min(self.track["min_clear"], t.y - PASSAGE_Y[0], PASSAGE_Y[1] - t.y)
+            self.track["crossed"] = True
+
+    def track_report(self, run: int) -> bool:
+        """Print the diagnostics of one goal; return whether the robot drove through the narrow passage."""
+        tr, self.track = self.track, None
+        if tr is None:
+            return False
+        jumps, errs = sorted(tr["jumps"]) or [math.nan], sorted(tr["errs"]) or [math.nan]
+        print(f"MEASURE run {run}: AMCL updates {len(tr['jumps'])}, jump median {jumps[len(jumps) // 2]:.3f} m, "
+              f"p90 {jumps[int(0.9 * (len(jumps) - 1))]:.3f} m, max {jumps[-1]:.3f} m; AMCL-truth median "
+              f"{errs[len(errs) // 2]:.3f} m, max {errs[-1]:.3f} m", flush=True)
+        print(f"MEASURE run {run}: plans {tr['plans']}, through the passage {tr['plans_through_passage']}; "
+              f"collision monitor events {tr['cm_events']}; in passage {tr['crossed']}, "
+              f"min clearance of the centre {tr['min_clear']:.3f} m (centred: "
+              f"{(PASSAGE_Y[1] - PASSAGE_Y[0]) / 2:.3f}), plan max offset from the passage centre "
+              f"{tr['plan_offset']:.3f} m", flush=True)
+        return bool(tr["crossed"])
 
     def amcl_vs_truth(self, label: str) -> None:
         """Diagnostics: AMCL pose (map frame) against the ground truth (world frame)."""
@@ -88,6 +149,9 @@ class NavCheck(Node):
         )
 
     def report(self, ok: bool, text: str) -> None:
+        if not ok and self.info_only:
+            print("WARN  " + text + " (informational run, not counted)", flush=True)
+            return
         print(("ok    " if ok else "FAIL  ") + text, flush=True)
         if not ok:
             self.failures += 1
@@ -120,6 +184,35 @@ class NavCheck(Node):
             rclpy.spin_once(self, timeout_sec=0.01)
         self.manual.publish(Twist())
         self.sim_sleep(0.5)
+
+    def goto(self, gx: float, gy: float, v_max: float = 0.15) -> bool:
+        """Test driver for mapping: drive to (gx, gy) in the world frame on the ground truth via /cmd_vel_manual
+        (the keyboard path: twist_mux A, collision monitor, simulated Nano). Not navigation software."""
+        deadline = time.monotonic() + 600.0
+        next_pub = 0.0
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.01)
+            if time.monotonic() < next_pub:
+                continue
+            next_pub = time.monotonic() + 0.05
+            p = self.truth.pose.pose
+            dx, dy = gx - p.position.x, gy - p.position.y
+            dist = math.hypot(dx, dy)
+            if dist < 0.05:
+                self.manual.publish(Twist())
+                self.sim_sleep(0.3)
+                return True
+            err = math.atan2(math.sin(math.atan2(dy, dx) - yaw_of(p.orientation)),
+                             math.cos(math.atan2(dy, dx) - yaw_of(p.orientation)))
+            twist = Twist()
+            if abs(err) > 0.25:
+                twist.angular.z = math.copysign(0.4, err)
+            else:
+                twist.linear.x = min(v_max, 0.5 * dist + 0.03)
+                twist.angular.z = max(-0.5, min(0.5, 2.0 * err))
+            self.manual.publish(twist)
+        self.manual.publish(Twist())
+        return False
 
     def start(self) -> bool:
         ok = self.spin_until(lambda: self.sim_now().nanoseconds > 0 and self.truth is not None, WAIT_S)
@@ -154,6 +247,12 @@ class NavCheck(Node):
         self.report(dx > 0.25, f"/cmd_vel_manual -> twist_mux -> collision_monitor -> robot (dx={dx:.3f})")
         self.drive(0.0, 0.5, 6.5)
         self.drive(0.15, 0.0, 2.7)
+        # Tour of the room so that the map also covers the area behind the narrow passage (east of x = 1.5):
+        # north of inner wall b, down the east side, west through the passage (centre y = -0.775), back.
+        centre = (PASSAGE_Y[0] + PASSAGE_Y[1]) / 2
+        tour = [(1.0, 2.5), (2.5, 2.5), (2.5, centre), (2.1, centre), (0.6, centre), (0.0, 0.0)]
+        reached = all(self.goto(x, y, 0.08 if abs(y - centre) < 1e-6 else 0.15) for x, y in tour)
+        self.report(reached, "mapping tour through the room and the narrow passage (driven on the ground truth)")
         self.sim_sleep(5.0)  # map_update_interval 2 s
         m = self.map
         if m is None:
@@ -176,6 +275,10 @@ class NavCheck(Node):
         self.report(free * res * res > 20.0, f"free area {free * res * res:.1f} m^2 (> 20)")
         obstacle = any(abs(x + 1.5) < 0.3 and abs(y - 1.0) < 0.3 for x, y in occ)
         self.report(obstacle, "static obstacle at (-1.5, 1.0) in the map")
+        behind = sum(1 for i, v in enumerate(m.data) if 0 <= v < 25
+                     and ox + (i % m.info.width + 0.5) * res > 1.6 and oy + (i // m.info.width + 0.5) * res < -1.1)
+        area = behind * res * res
+        self.report(area > 2.5, f"area behind the passage mapped ({area:.1f} m^2 free, > 2.5)")
         glass = any(abs(y + 2.0) < 0.1 and -1.4 < x < -0.6 for x, y in occ)
         self.report(not glass, "glass wall not in the lidar map (expected: invisible to the lidar)")
         cmd = ["ros2", "run", "nav2_map_server", "map_saver_cli", "-f", map_out]
@@ -196,6 +299,8 @@ class NavCheck(Node):
         goal.pose.pose.position.x, goal.pose.pose.position.y = gx, gy
         goal.pose.pose.orientation.z, goal.pose.pose.orientation.w = math.sin(gyaw / 2), math.cos(gyaw / 2)
         t0 = self.sim_now()
+        start_x = self.truth.pose.pose.position.x
+        self.track_start()
         send = self.nav.send_goal_async(goal)
         self.spin_until(send.done, 30.0)
         handle = send.result() if send.done() else None
@@ -203,9 +308,13 @@ class NavCheck(Node):
         if handle is None or not handle.accepted:
             return None
         result = handle.get_result_async()
-        self.spin_until(result.done, 600.0)
+        self.spin_until(lambda: (self.track_truth(), result.done())[1], 600.0)
         status = result.result().status if result.done() else None
         took = (self.sim_now() - t0).nanoseconds / 1e9
+        crossed = self.track_report(run)
+        if (start_x - PASSAGE_X) * (gx - PASSAGE_X) < 0 and abs(gy - sum(PASSAGE_Y) / 2) < 0.8:
+            # Start and goal on different sides of the inner wall, next to the passage: it must be used.
+            self.report(crossed, f"run {run}: drove through the 0.45 m passage")
         self.report(status == 4, f"run {run}: NavigateToPose SUCCEEDED (status {status}) in {took:.1f} s sim")
         self.sim_sleep(1.0)
         self.amcl_vs_truth(f"run {run} end")
@@ -216,10 +325,12 @@ class NavCheck(Node):
         if self.amcl is not None:
             a = self.amcl.pose.pose.position
             loc = math.hypot(a.x - q.position.x, a.y - q.position.y)
-        print(f"info  run {run}: true error {err:.3f} m, {math.degrees(dyaw):.1f} deg", flush=True)
+        print(f"info  run {run}: true error {err:.3f} m, {math.degrees(dyaw):.1f} deg; end pose "
+              f"({q.position.x:.2f}, {q.position.y:.2f}, {math.degrees(yaw_of(q.orientation)):.0f} deg)", flush=True)
         return err, dyaw, loc
 
-    def navigate(self, goals: list[tuple[float, float, float]], runs: int, acceptance: bool) -> int:
+    def navigate(self, goals: list[tuple[float, float, float]], runs: int, acceptance: bool,
+                 info_runs: frozenset[int] = frozenset()) -> int:
         if not self.start():
             return 1
         p = self.truth.pose.pose
@@ -256,8 +367,11 @@ class NavCheck(Node):
         within = 0
         for run in range(runs):
             gx, gy, gyaw = goals[run % len(goals)]
+            self.info_only = (run + 1) in info_runs
             res = self.one_goal(run + 1, gx, gy, gyaw)
             if res is None:
+                if self.info_only:
+                    continue
                 return 1
             err, dyaw, loc = res
             # spez_parameter_tests.md M1-03: end error <= 0.10 m and <= 10 deg in >= 9 of 10 runs.
@@ -270,6 +384,7 @@ class NavCheck(Node):
                 deg = math.degrees(dyaw)
                 self.report(dyaw <= math.radians(10), f"run {run + 1}: true heading error {deg:.1f} deg (<= 10)")
                 self.report(loc <= 0.10, f"run {run + 1}: AMCL vs truth {loc:.3f} m (<= 0.10)")
+            self.info_only = False
         if acceptance:
             text = f"M1-03 in simulation: {within} of {runs} runs within 0.10 m / 10 deg (>= 90 %)"
             self.report(within >= math.ceil(0.9 * runs), text)
@@ -286,6 +401,8 @@ def main() -> int:
                    help="repeat for several goals; runs cycle through them")
     n.add_argument("--runs", type=int, default=0, help="number of goals to drive (default: one per --goal)")
     n.add_argument("--acceptance", action="store_true", help="M1-03 rule: >= 90 %% of runs within 0.10 m / 10 deg")
+    n.add_argument("--info-run", type=int, action="append", default=[],
+                   help="1-based run whose failures are only printed (known open issue), repeatable")
     args = ap.parse_args()
     rclpy.init()
     node = NavCheck()
@@ -294,7 +411,7 @@ def main() -> int:
             code = node.mapping(args.map_out)
         else:
             goals = [tuple(g) for g in args.goal]
-            code = node.navigate(goals, args.runs or len(goals), args.acceptance)
+            code = node.navigate(goals, args.runs or len(goals), args.acceptance, frozenset(args.info_run))
     finally:
         node.destroy_node()
         rclpy.try_shutdown()
