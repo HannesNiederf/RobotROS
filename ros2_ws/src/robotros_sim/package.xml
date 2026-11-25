@@ -37,6 +37,8 @@
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
+  <!-- Middleware of the robot (spec 15.1); tools/sim_start.sh selects it. -->
+  <exec_depend>rmw_cyclonedds_cpp</exec_depend>
 
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>python3-pytest</test_depend>

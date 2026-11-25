@@ -93,7 +93,7 @@ def test_walled_cart_open_towards_room(world: ET.Element) -> None:
 def test_bridge_topics() -> None:
     entries = yaml.safe_load((PKG / "config" / "gz_bridge.yaml").read_text())
     ros = {e["ros_topic_name"]: e for e in entries}
-    assert set(ros) == {"/clock", "/scan", "/odom", "/tf", "/joint_states", "/sim/cmd_vel", "/sim/ground_truth"}
+    assert set(ros) == {"/sim/clock", "/scan", "/odom", "/tf", "/joint_states", "/sim/cmd_vel", "/sim/ground_truth"}
     # Only sim_hw_adapter drives Gazebo: the ROS /cmd_vel is not bridged (it goes through the simulated Nano).
     assert "/cmd_vel" not in ros
     assert ros["/sim/cmd_vel"]["direction"] == "ROS_TO_GZ"
@@ -106,3 +106,10 @@ def test_bridge_matches_gazebo_topics() -> None:
     entries = yaml.safe_load((PKG / "config" / "gz_bridge.yaml").read_text())
     bridged = {e["gz_topic_name"] for e in entries} - {"/clock"}
     assert used - {"/sim/ground_truth_tf"} == bridged  # the ground-truth TF stays inside Gazebo
+
+
+def test_cyclonedds_wifi_config() -> None:
+    # Parsed by Cyclone DDS in --pi sessions (ADR 0006): well-formed XML, multicast only for discovery.
+    root = ET.parse(PKG / "config" / "cyclonedds_wifi.xml").getroot()
+    values = [el.text for el in root.iter() if el.tag.endswith("AllowMulticast")]
+    assert values == ["spdp"]

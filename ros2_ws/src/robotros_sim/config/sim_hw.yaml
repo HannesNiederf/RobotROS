@@ -25,3 +25,6 @@ step_period_s: 0.01             # model step (simulation time)
 # (CI measurement 25.11.2026, sim_start_check.py). 360 / 312.45 = 1.152. The wheel positions of the model stay
 # at the real track; only the plugin's command and odometry use this value. Rechecked by sim_start_check.py.
 gazebo_track_scale: 1.152
+# /clock rate seen by the ROS nodes, per simulated second (clock_relay, ADR 0006). The fastest sim-time timer is
+# step_period_s above (100 Hz); a slower clock would make its callbacks fire in bursts.
+clock_relay_hz: 100.0

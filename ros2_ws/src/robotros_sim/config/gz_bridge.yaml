@@ -1,6 +1,8 @@
 # ros_gz_bridge topics for the simulation (softwarespezifikation.md section 14).
 # Gazebo names live under /sim/ so that only this bridge connects them to the ROS names the real robot uses.
-- ros_topic_name: /clock
+# Gazebo's clock goes to /sim/clock; clock_relay republishes it on /clock at most clock_relay_hz times per simulated
+# second (sim_hw.yaml), so that a --pi session does not send every clock message over the WLAN (ADR 0006).
+- ros_topic_name: /sim/clock
   gz_topic_name: /clock
   ros_type_name: rosgraph_msgs/msg/Clock
   gz_type_name: gz.msgs.Clock

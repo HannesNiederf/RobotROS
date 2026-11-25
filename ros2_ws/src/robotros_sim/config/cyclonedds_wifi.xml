@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Cyclone DDS for the distributed simulation over WLAN (ADR 0006, tools/sim_start.sh with the pi option):
+     multicast only for discovery (SPDP); user data goes unicast. Multicast in a WLAN is sent at a basic
+     rate and may be held back by power saving (assumption, to be measured in the Pi retest).
+     Not used on the robot in operation (there DDS stays on localhost, D-20). -->
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain Id="any">
+    <General>
+      <AllowMulticast>spdp</AllowMulticast>
+    </General>
+  </Domain>
+</CycloneDDS>

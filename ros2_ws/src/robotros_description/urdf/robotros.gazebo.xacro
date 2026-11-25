@@ -77,6 +77,9 @@
       </plugin>
       <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
         <topic>/sim/joint_states</topic>
+        <!-- Wheel angles only drive the wheel TF (display). Without a limit the plugin publishes every physics step,
+             and every message becomes a /tf message for all subscribers (ADR 0006). -->
+        <update_rate>20</update_rate>
         <joint_name>left_wheel_joint</joint_name>
         <joint_name>right_wheel_joint</joint_name>
       </plugin>
