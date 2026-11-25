@@ -38,7 +38,15 @@ der Messung das Endergebnis an Ziel B (M1-03 6/10 statt 10/10). Deshalb bleiben 
    (`world_map.py`), damit die Endfehler nur Navigation und AMCL messen und nicht die Qualität eines
    einzelnen SLAM-Laufs. Die SLAM-Qualität schwankte zwischen Läufen: die Endpunkte lagen je Karte
    gleichbleibend um 2–13 cm versetzt, bei einer Streuung innerhalb einer Karte von etwa 2 cm.
-   Die Navigation fährt A, B, P (durch den Durchgang) und zurück nach B.
+   Die Navigation fährt A, B und P (durch den Durchgang von West nach Ost).
+
+## Nachmessung mit allen Änderungen (Probe-Lauf, exakte Karte bzw. SLAM-Karte)
+- M1-03 auf der exakten Karte: 10/10 (Endfehler 0,035–0,084 m, 2,4–5,0°).
+- West → Ost durch den Durchgang: 4/4 (exakte Karte), 3/3 (SLAM-Karte).
+- Ost → West mit scharfer Kurve hinter dem Durchgang (P → B): 1/4 auf der exakten Karte, 3/3 auf der
+  SLAM-Karte. In den Fehlschlägen führte der geplante Weg bis 12,5 cm neben der Mitte durch den Durchgang
+  (der Planer kürzt Richtung B ab); der Roboter blieb davor stehen. **Offen:** Weg in Engstellen mittig
+  halten (Kandidaten: Glättung des Planers, `cost_travel_multiplier`), danach in die CI aufnehmen.
 
 ## Folgen und Grenzen
 - Kleine Wackler (unter 1–2 cm) der Lokalisierung bleiben sichtbar.
