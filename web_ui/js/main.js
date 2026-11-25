@@ -3,24 +3,23 @@ import * as ros from "./ros.js";
 import * as state from "./state.js";
 import { LANGS, argsFromList, currentLang, initLang, setLang, t } from "./i18n.js";
 import { initMapPage } from "./pages/map.js";
-
-const SAFETY_KEYS = ["safety.boot_locked", "safety.estop", "safety.wait_ack", "safety.armed"];
+import { headerView } from "./header.js";
 
 function renderHeader() {
   const conn = state.get("connection") || "connecting";
+  const v = headerView(conn, state.get("safety"), state.get("activity"));
   const connEl = document.getElementById("conn");
-  connEl.textContent = t(`ui.connection.${conn}`);
+  connEl.textContent = t(v.connKey);
   connEl.dataset.state = conn;
   document.getElementById("overlay-lost").hidden = conn !== "lost";
 
-  const safety = state.get("safety");
   const safetyEl = document.getElementById("safety");
-  safetyEl.textContent = safety ? t(SAFETY_KEYS[safety.state] || "safety.unknown") : t("safety.unknown");
-  safetyEl.dataset.state = safety ? String(safety.state) : "";
+  safetyEl.textContent = t(v.safetyKey);
+  safetyEl.dataset.state = v.safetyState;
 
-  const act = state.get("activity");
-  document.getElementById("activity-now").textContent = act ? t(act.now_key, argsFromList(act.now_args)) : "";
-  document.getElementById("activity-plan").textContent = act ? t(act.plan_key, argsFromList(act.plan_args)) : "";
+  const line = (part) => (part ? t(part.key, argsFromList(part.args)) : v.stale ? t("ui.no_data") : "");
+  document.getElementById("activity-now").textContent = line(v.now);
+  document.getElementById("activity-plan").textContent = line(v.plan);
   for (const b of document.querySelectorAll("[data-lang]")) b.classList.toggle("active", b.dataset.lang === currentLang());
 }
 

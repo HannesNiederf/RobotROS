@@ -40,5 +40,6 @@
   "ui.connection.connected": "Connesso",
   "ui.connection.connecting": "Connessione…",
   "ui.connection.lost": "Connessione persa",
-  "ui.connection.lost_long": "Connessione persa – il robot continua il lavoro in autonomia"
+  "ui.connection.lost_long": "Connessione persa – il robot continua il lavoro in autonomia",
+  "ui.no_data": "nessun dato aggiornato"
 }
