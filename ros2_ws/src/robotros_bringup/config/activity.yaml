@@ -7,4 +7,5 @@ activity_narrator:
     result_hold_s: 10.0       # how long "goal reached / failed" stays shown
     wait_s: 4.0               # = Wait in navigate_wait_replan.xml (person_wait_s)
     retries: 3                # = RecoveryNode number_of_retries in navigate_wait_replan.xml
+    min_hold_s: 0.8           # speed-derived activities must last this long before they are shown (no flicker)
     publish_period_s: 0.5

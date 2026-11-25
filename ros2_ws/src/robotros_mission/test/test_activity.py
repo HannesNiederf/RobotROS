@@ -30,7 +30,7 @@ I18N = PKG.parents[2] / "web_ui" / "i18n"
 
 
 def armed() -> ActivityTracker:
-    t = ActivityTracker(ActivityConfig(nominal_speed=0.15))
+    t = ActivityTracker(ActivityConfig(nominal_speed=0.15, min_hold_s=0.0))
     t.on_safety(SAFETY_ARMED, False)
     return t
 
@@ -121,3 +121,26 @@ def test_every_key_has_a_text_with_its_placeholders() -> None:
     for lang, data in texts.items():
         missing = keys - data.keys()
         assert not missing, (lang, missing)
+
+
+def test_debounce_keeps_short_flicker_out() -> None:
+    t = ActivityTracker(ActivityConfig(nominal_speed=0.15, min_hold_s=0.8))
+    t.on_safety(SAFETY_ARMED, False)
+    t.on_nav_status(STATUS_EXECUTING, 0.0)
+    t.on_motion(0.15, 0.0)
+    assert t.now(0.0).key == "activity.driving"
+    t.on_motion(0.06, 0.0)
+    assert t.now(0.3).key == "activity.driving"          # slow for 0.3 s: not shown yet
+    t.on_motion(0.15, 0.0)
+    assert t.now(0.5).key == "activity.driving"
+    t.on_motion(0.06, 0.0)
+    assert t.now(0.6).key == "activity.driving"
+    assert t.now(1.5).key == "activity.driving.slow"     # slow for 0.9 s: shown
+    t.on_bt("Wait", "RUNNING")
+    assert t.now(1.6).key == "activity.waiting"          # recovery steps are shown at once
+
+
+def test_manual_has_no_slow_variant() -> None:
+    t = armed()
+    t.on_motion(0.05, 0.0)
+    assert t.now(0).key == "activity.manual"

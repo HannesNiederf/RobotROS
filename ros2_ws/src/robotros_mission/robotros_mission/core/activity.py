@@ -37,6 +37,15 @@ class ActivityConfig:
     result_hold_s: float = 10.0       # how long "goal reached / failed" stays shown
     wait_s: float = 4.0               # person_wait_s, shown in the plan while waiting
     retries: int = 3                  # recovery retries of the behavior tree
+    min_hold_s: float = 0.8           # a motion-derived activity must last this long before it is shown
+
+
+# Shown at once; all other keys (derived from speed, short planning steps) only after min_hold_s.
+IMMEDIATE = frozenset({
+    "activity.estop", "activity.not_armed", "activity.stopped_obstacle", "activity.backing_up",
+    "activity.waiting", "activity.clearing_map", "activity.goal_reached", "activity.goal_canceled",
+    "activity.goal_failed",
+})
 
 
 @dataclass
@@ -67,6 +76,9 @@ class ActivityTracker:
         self.eta_s: float | None = None
         self.recoveries = 0
         self.planning = False
+        self.shown: Activity | None = None
+        self.candidate: str | None = None
+        self.candidate_since = 0.0
 
     # ---- inputs -------------------------------------------------------------------------------------------
     def on_safety(self, state: int, estop_pressed: bool) -> None:
@@ -131,11 +143,24 @@ class ActivityTracker:
         speed = {"speed": _num(self.v)}
         if self.cm_action in (CM_SLOWDOWN, CM_APPROACH, CM_LIMIT):
             return Activity(f"{base}.slow_obstacle", speed)
-        if self.v < c.slow_fraction * c.nominal_speed:
+        if base == "activity.driving" and self.v < c.slow_fraction * c.nominal_speed:
             return Activity(f"{base}.slow", speed)
         return Activity(base, speed)
 
     def now(self, t: float) -> Activity:
+        """Debounced activity: a key that is not IMMEDIATE must last min_hold_s before it replaces the shown one,
+        so the display does not flicker between e.g. "driving" and "driving slowly"."""
+        raw = self.raw_now(t)
+        if self.shown is None or raw.key == self.shown.key or raw.key in IMMEDIATE:
+            self.shown, self.candidate = raw, None
+            return raw
+        if raw.key != self.candidate:
+            self.candidate, self.candidate_since = raw.key, t
+        if t - self.candidate_since >= self.cfg.min_hold_s:
+            self.shown, self.candidate = raw, None
+        return self.shown
+
+    def raw_now(self, t: float) -> Activity:
         blocked = self._safety_block()
         if blocked:
             return blocked

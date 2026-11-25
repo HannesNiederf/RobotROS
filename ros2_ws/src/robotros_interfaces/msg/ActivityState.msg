@@ -1,5 +1,5 @@
 # Chosen here (ADR 0004), not fixed by the spec: plain-language activity of the robot (topic /activity).
-# Keys are i18n keys of web_ui/i18n/*.json (spec 13.4); args are "name=value" for the {name} placeholders.
+# Keys are i18n keys of web_ui/i18n/<lang>.json (spec 13.4); args are "name=value" for the {name} placeholders.
 std_msgs/Header header
 string now_key       # what the robot does now, e.g. "activity.driving"
 string[] now_args    # e.g. ["speed=0.12"]

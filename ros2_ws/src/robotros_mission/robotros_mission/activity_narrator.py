@@ -29,6 +29,7 @@ class ActivityNarrator(Node):
         self.declare_parameter("result_hold_s", 10.0)
         self.declare_parameter("wait_s", 4.0)
         self.declare_parameter("retries", 3)
+        self.declare_parameter("min_hold_s", 0.8)
         self.declare_parameter("publish_period_s", 0.5)
         with open(self.get_parameter("speed_profiles_yaml").value, encoding="utf-8") as f:
             nominal = float(yaml.safe_load(f)["NORMAL"]["v"])
@@ -36,7 +37,8 @@ class ActivityNarrator(Node):
         self.tracker = ActivityTracker(ActivityConfig(
             moving_speed=p("moving_speed").value, turning_rate=p("turning_rate").value,
             slow_fraction=p("slow_fraction").value, nominal_speed=nominal,
-            result_hold_s=p("result_hold_s").value, wait_s=p("wait_s").value, retries=p("retries").value))
+            result_hold_s=p("result_hold_s").value, wait_s=p("wait_s").value, retries=p("retries").value,
+            min_hold_s=p("min_hold_s").value))
         self.pub = self.create_publisher(ActivityState, "activity", 10)
         self.create_subscription(SafetyState, "hw/safety", self.on_safety, 10)
         self.create_subscription(GoalStatusArray, "navigate_to_pose/_action/status", self.on_status, 10)
