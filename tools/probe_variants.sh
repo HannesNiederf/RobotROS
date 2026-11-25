@@ -18,6 +18,22 @@ phase() { local name="$1"; shift; local la=(); while [ "$1" != "--" ]; do la+=("
   LAUNCH_PID=$!; local rc=0; timeout 1500 python3 "$CHECK" "$@" || rc=$?; stop_sim
   echo "collision-ahead lines: $(grep -ac 'collision ahead' "$LOG_DIR/$name.log")"
   echo "== $name rc=$rc"; }
+NAV2="$ROOT/ros2_ws/install/robotros_bringup/share/robotros_bringup/config/nav2.yaml"
+case "$1" in
+  v1) EXPR="pass" ;;
+  v2) EXPR="amcl['max_beams']=60; amcl['sigma_hit']=0.2" ;;
+  v3) EXPR="rpp['rotate_to_heading_min_angle']=1.57" ;;
+  v4) EXPR="rpp['rotate_to_heading_min_angle']=1.57; d['planner_server']['ros__parameters']['GridBased']['cost_travel_multiplier']=3.0" ;;
+esac
+echo "######## variant $1: $EXPR"
+python3 - "$NAV2" "$EXPR" <<'PY'
+import sys, yaml
+path, expr = sys.argv[1:]
+d = yaml.safe_load(open(path))
+amcl = d["amcl"]["ros__parameters"]; rpp = d["controller_server"]["ros__parameters"]["FollowPath"]
+exec(expr)
+yaml.safe_dump(d, open(path, "w"))
+PY
 phase mapping mode:=mapping -- mapping --map-out "$MAP"
 phase accept mode:=nav "map:=$MAP.yaml" -- nav --goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0 --runs 10 --acceptance || true
 phase passage mode:=nav "map:=$MAP.yaml" -- nav --goal 0.7 -1.5 0.0 --goal 2.5 -0.775 0.0 --runs 9 || true

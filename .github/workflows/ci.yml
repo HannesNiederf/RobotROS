@@ -74,6 +74,10 @@ jobs:
   # Headless Gazebo Harmonic smoke test (softwarespezifikation.md section 14): start the generic world,
   # check /scan, /odom, TF, and drive. Software rendering (Mesa) because CI has no GPU.
   sim:
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [v1, v2, v3, v4]
     runs-on: ubuntu-24.04
     container: ros:jazzy
     defaults:
@@ -93,12 +97,12 @@ jobs:
           cd ros2_ws
           colcon build --packages-up-to robotros_sim --event-handlers console_direct+
       - name: Variant probe
-        run: tools/probe_variants.sh
+        run: tools/probe_variants.sh ${{ matrix.variant }}
       - name: Keep simulation logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sim-logs
+          name: sim-logs-${{ matrix.variant }}
           path: |
             build/sim_smoke
             build/sim_nav
