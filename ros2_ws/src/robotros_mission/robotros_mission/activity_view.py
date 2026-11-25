@@ -61,12 +61,13 @@ class ActivityView(Node):
         sim_t = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
         if self.mode == "now":
             line = text(self.texts, msg.now_key, list(msg.now_args), self.lang)
-            # A new line only when the activity itself changes, not for every speed digit.
+            # A new line only when the activity itself changes; otherwise the current line is updated in place
+            # (speed digits). The finished line of the previous activity stays above.
             if msg.now_key != self.last:
+                if self.last:
+                    print(flush=True)
                 self.last = msg.now_key
-                print(f"[{sim_t:8.1f} s] {line}", flush=True)
-            else:
-                print(f"\r[{sim_t:8.1f} s] {line}\033[K", end="", flush=True)
+            print(f"\r[{sim_t:8.1f} s] {line}\033[K", end="", flush=True)
         else:
             line = text(self.texts, msg.plan_key, list(msg.plan_args), self.lang)
             if line != self.last:
