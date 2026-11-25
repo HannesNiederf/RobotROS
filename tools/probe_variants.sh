@@ -21,9 +21,8 @@ phase() { local name="$1"; shift; local la=(); while [ "$1" != "--" ]; do la+=("
 NAV2="$ROOT/ros2_ws/install/robotros_bringup/share/robotros_bringup/config/nav2.yaml"
 case "$1" in
   v1) EXPR="pass" ;;
-  v2) EXPR="amcl['max_beams']=60; amcl['sigma_hit']=0.2" ;;
-  v3) EXPR="rpp['rotate_to_heading_min_angle']=1.57" ;;
-  v4) EXPR="rpp['rotate_to_heading_min_angle']=1.57; d['planner_server']['ros__parameters']['GridBased']['cost_travel_multiplier']=3.0" ;;
+  v2) EXPR="lc['resolution']=0.025" ;;
+  v3) EXPR="lc['resolution']=0.025; d['planner_server']['ros__parameters']['GridBased']['cost_travel_multiplier']=3.0" ;;
 esac
 echo "######## variant $1: $EXPR"
 python3 - "$NAV2" "$EXPR" <<'PY'
@@ -36,4 +35,5 @@ yaml.safe_dump(d, open(path, "w"))
 PY
 phase mapping mode:=mapping -- mapping --map-out "$MAP"
 phase accept mode:=nav "map:=$MAP.yaml" -- nav --goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0 --runs 10 --acceptance || true
-phase passage mode:=nav "map:=$MAP.yaml" -- nav --goal 0.7 -1.5 0.0 --goal 2.5 -0.775 0.0 --runs 9 || true
+phase straight mode:=nav "map:=$MAP.yaml" -- nav --goal 0.5 -0.775 0.0 --goal 2.5 -0.775 3.14159 --runs 8 || true
+phase sharp mode:=nav "map:=$MAP.yaml" -- nav --goal 0.7 -1.5 0.0 --goal 2.5 -0.775 0.0 --runs 8 || true
