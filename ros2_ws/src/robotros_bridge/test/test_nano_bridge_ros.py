@@ -140,8 +140,9 @@ def test_bridge_against_fake_nanos(system) -> None:  # noqa: ANN001
     assert 0.03 < mean <= 0.052, recent  # D-24 cap 0.05 m/s; one tick/s is about 0.00035 m/s
     assert max(recent) <= 0.052, recent
 
-    time.sleep(1.0)  # cmd_vel timeout 0.5 s -> zero setpoints
-    assert abs(seen["odom"][-1].twist.twist.linear.x) < 0.005
+    # cmd_vel timeout 0.5 s -> zero setpoints; then the wheel lag and the measured-rate window. A fixed 1 s wait
+    # failed once on a loaded CI runner (0.0064 m/s left, 25.11.2026), so wait up to 2 s for the standstill.
+    assert wait_until(lambda: abs(seen["odom"][-1].twist.twist.linear.x) < 0.005, 2.0), seen["odom"][-1].twist
 
     res = call(probe, SetRelay, "hw/set_relay", SetRelay.Request(channel=1, on=True))
     assert res.success, res.message
