@@ -6,7 +6,10 @@ on:
   # start the workflow by hand (workflow_dispatch).
   push:
     branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
+  # Pure documentation changes (ADRs, READMEs) need no build or simulation run.
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
 
 concurrency:
