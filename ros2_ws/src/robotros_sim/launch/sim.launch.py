@@ -11,6 +11,8 @@ Arguments:
   auto      true: sim_helper arms the robot once and (mode nav) sets the initial pose (tools/sim_start.sh)
   rviz      true: RViz with robotros_sim/rviz/robotros.rviz
   web       true: browser UI on http://localhost:8080 and rosbridge on port 9090 (robotros_web)
+  robot_software  true (default): also start robot_software.launch.py (hw adapter, navigation, helper, web);
+            false: only Gazebo, robot model and RViz (distributed simulation, the Pi runs the rest; ADR 0006)
 """
 
 from pathlib import Path
@@ -23,7 +25,6 @@ from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -76,49 +77,17 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
     )
 
-    # Stands in for nano_bridge and both Nanos: /cmd_vel -> simulated safety logic -> /sim/cmd_vel -> Gazebo.
-    hw_adapter = Node(
-        package="robotros_sim",
-        executable="sim_hw_adapter",
-        parameters=[{"use_sim_time": True, "world_sdf": world_file}],
-        output="screen",
-    )
-
-    navigation = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([FindPackageShare("robotros_bringup"), "launch", "navigation.launch.py"])
-        ),
+    # Robot software (sim_hw_adapter, navigation, sim_helper, web UI): robot_software.launch.py (ADR 0006).
+    robot_software = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(PathJoinSubstitution([sim_share, "launch", "robot_software.launch.py"])),
         launch_arguments={
+            "world": world,
             "mode": LaunchConfiguration("mode"),
             "map": LaunchConfiguration("map"),
-            "use_sim_time": "true",
+            "auto": LaunchConfiguration("auto"),
+            "web": LaunchConfiguration("web"),
         }.items(),
-        condition=IfCondition(PythonExpression(["'", LaunchConfiguration("mode"), "' != 'none'"])),
-    )
-
-    helper = Node(
-        package="robotros_sim",
-        executable="sim_helper.py",
-        parameters=[
-            {
-                "use_sim_time": True,
-                "auto_arm": True,
-                "initial_pose": ParameterValue(
-                    PythonExpression(["'", LaunchConfiguration("mode"), "' == 'nav'"]), value_type=bool
-                ),
-            }
-        ],
-        output="screen",
-        condition=IfCondition(LaunchConfiguration("auto")),
-    )
-
-    # Browser UI (robotros_web): http://localhost:8080, rosbridge on port 9090 (ADR 0005).
-    web = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([FindPackageShare("robotros_web"), "launch", "web.launch.py"])
-        ),
-        launch_arguments={"use_sim_time": "true"}.items(),
-        condition=IfCondition(LaunchConfiguration("web")),
+        condition=IfCondition(LaunchConfiguration("robot_software")),
     )
 
     rviz = Node(
@@ -142,15 +111,13 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("auto", default_value="false"),
             DeclareLaunchArgument("rviz", default_value="false"),
             DeclareLaunchArgument("web", default_value="false"),
+            DeclareLaunchArgument("robot_software", default_value="true"),
             gz_headless,
             gz_gui,
             description,
             spawn,
             bridge,
-            hw_adapter,
-            navigation,
-            helper,
-            web,
+            robot_software,
             rviz,
         ]
     )
