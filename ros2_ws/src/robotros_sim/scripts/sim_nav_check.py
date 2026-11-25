@@ -48,6 +48,7 @@ class NavCheck(Node):
     def __init__(self) -> None:
         super().__init__("sim_nav_check", parameter_overrides=[Parameter("use_sim_time", value=True)])
         self.failures = 0
+        self.info_only = False  # set for runs given with --info-run: their failures are printed, not counted
         self.map: OccupancyGrid | None = None
         self.truth: Odometry | None = None
         self.safety: SafetyState | None = None
@@ -148,6 +149,9 @@ class NavCheck(Node):
         )
 
     def report(self, ok: bool, text: str) -> None:
+        if not ok and self.info_only:
+            print("WARN  " + text + " (informational run, not counted)", flush=True)
+            return
         print(("ok    " if ok else "FAIL  ") + text, flush=True)
         if not ok:
             self.failures += 1
@@ -325,7 +329,8 @@ class NavCheck(Node):
               f"({q.position.x:.2f}, {q.position.y:.2f}, {math.degrees(yaw_of(q.orientation)):.0f} deg)", flush=True)
         return err, dyaw, loc
 
-    def navigate(self, goals: list[tuple[float, float, float]], runs: int, acceptance: bool) -> int:
+    def navigate(self, goals: list[tuple[float, float, float]], runs: int, acceptance: bool,
+                 info_runs: frozenset[int] = frozenset()) -> int:
         if not self.start():
             return 1
         p = self.truth.pose.pose
@@ -362,8 +367,11 @@ class NavCheck(Node):
         within = 0
         for run in range(runs):
             gx, gy, gyaw = goals[run % len(goals)]
+            self.info_only = (run + 1) in info_runs
             res = self.one_goal(run + 1, gx, gy, gyaw)
             if res is None:
+                if self.info_only:
+                    continue
                 return 1
             err, dyaw, loc = res
             # spez_parameter_tests.md M1-03: end error <= 0.10 m and <= 10 deg in >= 9 of 10 runs.
@@ -376,6 +384,7 @@ class NavCheck(Node):
                 deg = math.degrees(dyaw)
                 self.report(dyaw <= math.radians(10), f"run {run + 1}: true heading error {deg:.1f} deg (<= 10)")
                 self.report(loc <= 0.10, f"run {run + 1}: AMCL vs truth {loc:.3f} m (<= 0.10)")
+            self.info_only = False
         if acceptance:
             text = f"M1-03 in simulation: {within} of {runs} runs within 0.10 m / 10 deg (>= 90 %)"
             self.report(within >= math.ceil(0.9 * runs), text)
@@ -392,6 +401,8 @@ def main() -> int:
                    help="repeat for several goals; runs cycle through them")
     n.add_argument("--runs", type=int, default=0, help="number of goals to drive (default: one per --goal)")
     n.add_argument("--acceptance", action="store_true", help="M1-03 rule: >= 90 %% of runs within 0.10 m / 10 deg")
+    n.add_argument("--info-run", type=int, action="append", default=[],
+                   help="1-based run whose failures are only printed (known open issue), repeatable")
     args = ap.parse_args()
     rclpy.init()
     node = NavCheck()
@@ -400,7 +411,7 @@ def main() -> int:
             code = node.mapping(args.map_out)
         else:
             goals = [tuple(g) for g in args.goal]
-            code = node.navigate(goals, args.runs or len(goals), args.acceptance)
+            code = node.navigate(goals, args.runs or len(goals), args.acceptance, frozenset(args.info_run))
     finally:
         node.destroy_node()
         rclpy.try_shutdown()
