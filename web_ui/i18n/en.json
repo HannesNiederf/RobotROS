@@ -40,5 +40,6 @@
   "ui.connection.connected": "Connected",
   "ui.connection.connecting": "Connecting…",
   "ui.connection.lost": "Connection lost",
-  "ui.connection.lost_long": "Connection lost – robot continues its work autonomously"
+  "ui.connection.lost_long": "Connection lost – robot continues its work autonomously",
+  "ui.no_data": "no current data"
 }

@@ -40,5 +40,6 @@
   "ui.connection.connected": "Verbunden",
   "ui.connection.connecting": "Verbinde…",
   "ui.connection.lost": "Verbindung verloren",
-  "ui.connection.lost_long": "Verbindung verloren – der Roboter arbeitet selbstständig weiter"
+  "ui.connection.lost_long": "Verbindung verloren – der Roboter arbeitet selbstständig weiter",
+  "ui.no_data": "keine aktuellen Daten"
 }
