@@ -30,6 +30,7 @@ import sys, yaml
 path, expr = sys.argv[1:]
 d = yaml.safe_load(open(path))
 amcl = d["amcl"]["ros__parameters"]; rpp = d["controller_server"]["ros__parameters"]["FollowPath"]
+lc = d["local_costmap"]["local_costmap"]["ros__parameters"]; gc = d["global_costmap"]["global_costmap"]["ros__parameters"]
 exec(expr)
 yaml.safe_dump(d, open(path, "w"))
 PY
