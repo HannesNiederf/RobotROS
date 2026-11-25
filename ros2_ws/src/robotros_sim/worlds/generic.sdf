@@ -37,24 +37,24 @@
       </link>
     </model>
 
-    <!-- Walls, passage, obstacle, glass wall, floor markings. -->
+    <!-- Walls (brown, better visible in the Gazebo window), passage, obstacle, glass wall, floor markings. -->
     <model name="room">
       <static>true</static>
       <pose>0 0 0 0 0 0</pose>
       <link name="link">
         <collision name="wall_n_c"><pose>0 3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry></collision>
-        <visual name="wall_n_v"><pose>0 3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <visual name="wall_n_v"><pose>0 3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry><material><ambient>0.45 0.28 0.12 1</ambient><diffuse>0.45 0.28 0.12 1</diffuse></material></visual>
         <collision name="wall_s_c"><pose>0 -3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry></collision>
-        <visual name="wall_s_v"><pose>0 -3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <visual name="wall_s_v"><pose>0 -3.55 0.25 0 0 0</pose><geometry><box><size>7.2 0.1 0.5</size></box></geometry><material><ambient>0.45 0.28 0.12 1</ambient><diffuse>0.45 0.28 0.12 1</diffuse></material></visual>
         <collision name="wall_e_c"><pose>3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry></collision>
-        <visual name="wall_e_v"><pose>3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <visual name="wall_e_v"><pose>3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry><material><ambient>0.45 0.28 0.12 1</ambient><diffuse>0.45 0.28 0.12 1</diffuse></material></visual>
         <collision name="wall_w_c"><pose>-3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry></collision>
-        <visual name="wall_w_v"><pose>-3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <visual name="wall_w_v"><pose>-3.55 0 0.25 0 0 0</pose><geometry><box><size>0.1 7.2 0.5</size></box></geometry><material><ambient>0.45 0.28 0.12 1</ambient><diffuse>0.45 0.28 0.12 1</diffuse></material></visual>
         <!-- Narrow passage 0.45 m between y = -1.00 and y = -0.55 (spec section 14). -->
         <collision name="inner_a_c"><pose>1.5 -2.25 0.25 0 0 0</pose><geometry><box><size>0.1 2.5 0.5</size></box></geometry></collision>
-        <visual name="inner_a_v"><pose>1.5 -2.25 0.25 0 0 0</pose><geometry><box><size>0.1 2.5 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <visual name="inner_a_v"><pose>1.5 -2.25 0.25 0 0 0</pose><geometry><box><size>0.1 2.5 0.5</size></box></geometry><material><ambient>0.45 0.28 0.12 1</ambient><diffuse>0.45 0.28 0.12 1</diffuse></material></visual>
         <collision name="inner_b_c"><pose>1.5 0.475 0.25 0 0 0</pose><geometry><box><size>0.1 2.05 0.5</size></box></geometry></collision>
-        <visual name="inner_b_v"><pose>1.5 0.475 0.25 0 0 0</pose><geometry><box><size>0.1 2.05 0.5</size></box></geometry><material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material></visual>
+        <visual name="inner_b_v"><pose>1.5 0.475 0.25 0 0 0</pose><geometry><box><size>0.1 2.05 0.5</size></box></geometry><material><ambient>0.45 0.28 0.12 1</ambient><diffuse>0.45 0.28 0.12 1</diffuse></material></visual>
         <!-- Static obstacle. -->
         <collision name="obstacle_c"><pose>-1.5 1 0.25 0 0 0</pose><geometry><box><size>0.4 0.4 0.5</size></box></geometry></collision>
         <visual name="obstacle_v"><pose>-1.5 1 0.25 0 0 0</pose><geometry><box><size>0.4 0.4 0.5</size></box></geometry><material><ambient>0.8 0.4 0.1 1</ambient><diffuse>0.8 0.4 0.1 1</diffuse></material></visual>

@@ -8,6 +8,7 @@
 #                                                      set goals in RViz with "2D Goal Pose"
 #   tools/sim_start.sh now                            what the robot does now, running log (another terminal)
 #   tools/sim_start.sh plan                           what the robot intends (another terminal)
+#   tools/sim_start.sh rtf [SECONDS]                  real time factor of the running simulation (another terminal)
 #                                                      language from $LANG (de/it/en), or add --lang de|en|it
 #   --check            test mode (CI): no keyboard, runs sim_start_check.py and exits with its result
 #
@@ -56,6 +57,9 @@ case "$MODE" in
     NAME="${ARG:-$MAP_DEFAULT}"
     exec ros2 run nav2_map_server map_saver_cli -f "$NAME" --ros-args -p save_map_timeout:=20.0
     ;;
+  rtf)
+    exec python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/sim_rtf.py" ${ARG:+"$ARG"}
+    ;;
   now|plan)
     exec ros2 run robotros_mission activity_view "$MODE" --i18n "$ROOT/web_ui/i18n" "${VIEW_ARGS[@]}"
     ;;
@@ -69,7 +73,7 @@ case "$MODE" in
     LAUNCH_ARGS=(mode:=nav "map:=$(realpath "$MAP")")
     ;;
   *)
-    sed -n '2,16p' "$0"
+    sed -n '2,17p' "$0"
     exit 1
     ;;
 esac
@@ -109,6 +113,12 @@ if [ "$CHECK" = true ]; then
   kill -INT "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
   for _ in $(seq 1 20); do kill -0 "$VIEW_NOW" 2> /dev/null || kill -0 "$VIEW_PLAN" 2> /dev/null || break; sleep 0.25; done
   kill -KILL "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
+  if python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/sim_rtf.py" 5; then
+    echo "ok    sim_rtf measured the real time factor"
+  else
+    echo "FAIL  sim_rtf could not measure the real time factor"
+    rc=1
+  fi
   echo "---- activity_view now (German) ----"
   tr '\r' '\n' < "$VIEW_LOG.now" | grep -a . | tail -n 25 || true
   if [ "$MODE" = nav ]; then
