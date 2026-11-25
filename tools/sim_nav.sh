@@ -3,15 +3,16 @@
 #   1. simulation with mode:=mapping: drive a pattern, check the slam_toolbox map, save it
 #   2. simulation with mode:=nav and that map: AMCL, Nav2 goal, check the true end pose
 # Usage (after `colcon build` in ros2_ws): tools/sim_nav.sh [--acceptance] [log_dir]
-#   default       goals A (-2.3, 0, pi) and B (0.7, -1.5, 0), one run each, gross limits per run
+#   default       goals A (-2.3, 0, pi), B (0.7, -1.5, 0), P (2.5, -0.775, 0) behind the 0.45 m passage and back
+#                 to B; one run each, gross limits per run
 #   --acceptance  M1-03 in simulation: 10 runs A <-> B, >= 9 within 0.10 m / 10 deg
 # Isolation as tools/sim_smoke.sh: own ROS domain (not 42), localhost only, own Gazebo partition.
 set -eo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NAV_ARGS=(--goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0)
+NAV_ARGS=(--goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0 --goal 2.5 -0.775 0.0 --goal 0.7 -1.5 3.14159)
 if [ "${1:-}" = "--acceptance" ]; then
-  NAV_ARGS+=(--runs 10 --acceptance)
+  NAV_ARGS=(--goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0 --runs 10 --acceptance)
   shift
 fi
 LOG_DIR="${1:-$ROOT/build/sim_nav}"
