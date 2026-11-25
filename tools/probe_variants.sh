@@ -19,9 +19,12 @@ phase() { local name="$1"; shift; local la=(); while [ "$1" != "--" ]; do la+=("
   echo "collision-ahead lines: $(grep -ac 'collision ahead' "$LOG_DIR/$name.log")"
   echo "== $name rc=$rc"; }
 NAV2="$ROOT/ros2_ws/install/robotros_bringup/share/robotros_bringup/config/nav2.yaml"
+G="d['planner_server']['ros__parameters']['GridBased']"
 case "$1" in
-  v1) EXPR="pass" ;;
-  v2) EXPR="pass" ;;
+  c1) EXPR="$G['cost_travel_multiplier']=3.0" ;;
+  c2) EXPR="$G['smoother']={'max_iterations': 1000, 'w_smooth': 0.1, 'w_data': 0.4, 'tolerance': 1e-10}" ;;
+  c3) EXPR="$G['cost_travel_multiplier']=3.0; $G['smoother']={'max_iterations': 1000, 'w_smooth': 0.1, 'w_data': 0.4, 'tolerance': 1e-10}" ;;
+  c0) EXPR="pass" ;;
 esac
 echo "######## variant $1: $EXPR"
 python3 - "$NAV2" "$EXPR" <<'PY'
@@ -33,8 +36,5 @@ lc = d["local_costmap"]["local_costmap"]["ros__parameters"]; gc = d["global_cost
 exec(expr)
 yaml.safe_dump(d, open(path, "w"))
 PY
-phase mapping mode:=mapping -- mapping --map-out "$MAP"
 python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/world_map.py" "$ROOT/ros2_ws/install/robotros_sim/share/robotros_sim/worlds/generic.sdf" "$LOG_DIR/world_map"
-phase accept mode:=nav "map:=$LOG_DIR/world_map.yaml" -- nav --goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0 --runs 10 --acceptance || true
-phase sharp mode:=nav "map:=$LOG_DIR/world_map.yaml" -- nav --goal 0.7 -1.5 0.0 --goal 2.5 -0.775 0.0 --runs 9 || true
-phase slam_sharp mode:=nav "map:=$MAP.yaml" -- nav --goal 0.7 -1.5 0.0 --goal 2.5 -0.775 0.0 --runs 7 || true
+phase sharp mode:=nav "map:=$LOG_DIR/world_map.yaml" -- nav --goal 2.5 -0.775 0.0 --goal 0.7 -1.5 0.0 --runs 11 || true
