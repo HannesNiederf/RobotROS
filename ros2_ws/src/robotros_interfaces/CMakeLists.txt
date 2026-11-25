@@ -30,6 +30,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/KeepoutZoneList.msg"
   "msg/ContactPointList.msg"
   "msg/MapMeta.msg"
+  "msg/ActivityState.msg"
   # Services (section 5.2)
   "srv/SetArm.srv"
   "srv/SetRelay.srv"

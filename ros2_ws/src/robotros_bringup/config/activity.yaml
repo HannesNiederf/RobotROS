@@ -1,0 +1,10 @@
+# activity_narrator (robotros_mission, ADR 0004): thresholds of the plain-language activity display.
+activity_narrator:
+  ros__parameters:
+    moving_speed: 0.02        # m/s: below this the robot counts as standing
+    turning_rate: 0.05        # rad/s: above this (while standing) it turns on the spot
+    slow_fraction: 0.6        # below this fraction of the profile speed it "drives slowly"
+    result_hold_s: 10.0       # how long "goal reached / failed" stays shown
+    wait_s: 4.0               # = Wait in navigate_wait_replan.xml (person_wait_s)
+    retries: 3                # = RecoveryNode number_of_retries in navigate_wait_replan.xml
+    publish_period_s: 0.5

@@ -6,6 +6,9 @@
 #                                                      default ~/robotros_karte
 #   tools/sim_start.sh nav [MAP.yaml] [--gazebo-gui]   navigate with a saved map (default ~/robotros_karte.yaml):
 #                                                      set goals in RViz with "2D Goal Pose"
+#   tools/sim_start.sh now                            what the robot does now, running log (another terminal)
+#   tools/sim_start.sh plan                           what the robot intends (another terminal)
+#                                                      language from $LANG (de/it/en), or add --lang de|en|it
 #   --check            test mode (CI): no keyboard, runs sim_start_check.py and exits with its result
 #
 # The robot is armed once automatically and, in mode nav, gets its initial pose automatically
@@ -20,9 +23,12 @@ MAP_DEFAULT="$HOME/robotros_karte"
 GZ_GUI=false
 CHECK=false
 ARG=""
+VIEW_ARGS=()
 for a in "$@"; do
   case "$a" in
     --gazebo-gui) GZ_GUI=true ;;
+    --lang) VIEW_ARGS+=(--lang) ;;
+    de|en|it) VIEW_ARGS+=("$a") ;;
     --check) CHECK=true ;;
     *) ARG="$a" ;;
   esac
@@ -50,6 +56,9 @@ case "$MODE" in
     NAME="${ARG:-$MAP_DEFAULT}"
     exec ros2 run nav2_map_server map_saver_cli -f "$NAME" --ros-args -p save_map_timeout:=20.0
     ;;
+  now|plan)
+    exec ros2 run robotros_mission activity_view "$MODE" --i18n "$ROOT/web_ui/i18n" "${VIEW_ARGS[@]}"
+    ;;
   mapping) LAUNCH_ARGS=(mode:=mapping) ;;
   nav)
     MAP="${ARG:-$MAP_DEFAULT.yaml}"
@@ -60,7 +69,7 @@ case "$MODE" in
     LAUNCH_ARGS=(mode:=nav "map:=$(realpath "$MAP")")
     ;;
   *)
-    sed -n '2,13p' "$0"
+    sed -n '2,16p' "$0"
     exit 1
     ;;
 esac

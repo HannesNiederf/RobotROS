@@ -16,6 +16,7 @@
   <exec_depend>robotros_bridge</exec_depend>
   <exec_depend>robotros_bringup</exec_depend>
   <exec_depend>robotros_obstacles</exec_depend>
+  <exec_depend>robotros_mission</exec_depend>
   <exec_depend>nav2_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
   <exec_depend>rviz2</exec_depend>
