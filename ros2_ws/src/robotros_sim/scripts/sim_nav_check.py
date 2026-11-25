@@ -96,6 +96,8 @@ class NavCheck(Node):
             gap = [p.pose.position for p in msg.poses if abs(p.pose.position.x - PASSAGE_X) < 0.06]
             if gap and all(PASSAGE_Y[0] < p.y < PASSAGE_Y[1] for p in gap):
                 self.track["plans_through_passage"] += 1
+                centre = (PASSAGE_Y[0] + PASSAGE_Y[1]) / 2
+                self.track["plan_offset"] = max(self.track["plan_offset"], max(abs(p.y - centre) for p in gap))
 
     def _on_cm(self, msg: CollisionMonitorState) -> None:
         if self.track is not None and msg.action_type != 0:
@@ -103,7 +105,7 @@ class NavCheck(Node):
 
     def track_start(self) -> None:
         self.track = {"jumps": [], "errs": [], "last": None, "plans": 0, "plans_through_passage": 0,
-                      "cm_events": 0, "min_clear": math.inf, "crossed": False}
+                      "cm_events": 0, "min_clear": math.inf, "crossed": False, "plan_offset": 0.0}
 
     def track_truth(self) -> None:
         """Clearance of the true footprint centre to the passage walls while the robot is inside the passage."""
@@ -124,7 +126,9 @@ class NavCheck(Node):
               f"{errs[len(errs) // 2]:.3f} m, max {errs[-1]:.3f} m", flush=True)
         print(f"MEASURE run {run}: plans {tr['plans']}, through the passage {tr['plans_through_passage']}; "
               f"collision monitor events {tr['cm_events']}; in passage {tr['crossed']}, "
-              f"min clearance of the centre {tr['min_clear']:.3f} m", flush=True)
+              f"min clearance of the centre {tr['min_clear']:.3f} m (centred: "
+              f"{(PASSAGE_Y[1] - PASSAGE_Y[0]) / 2:.3f}), plan max offset from the passage centre "
+              f"{tr['plan_offset']:.3f} m", flush=True)
 
     def amcl_vs_truth(self, label: str) -> None:
         """Diagnostics: AMCL pose (map frame) against the ground truth (world frame)."""
