@@ -185,7 +185,7 @@ planner_server:
       tolerance: 0.05                    # spec
       allow_unknown: false               # spec
       max_planning_time: 2.0             # spec
-      cost_travel_multiplier: 2.0        # spec
+      cost_travel_multiplier: 3.0        # ADR 0003 (spec 2.0): keeps the path nearer the middle of narrow passages
       downsample_costmap: false
       max_iterations: 1000000
       max_on_approach_iterations: 1000
