@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# PROBE ONLY: mapping once, then M1-03 acceptance and a passage reliability run on the same map.
+set -eo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOG_DIR="$ROOT/build/sim_nav"; mkdir -p "$LOG_DIR"
+export ROS_DOMAIN_ID=77 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST GZ_IP=127.0.0.1
+source "$ROOT/ros2_ws/install/setup.bash"
+CHECK="$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/sim_nav_check.py"
+MAP="$LOG_DIR/generic_map"
+LAUNCH_PID=""
+stop_sim() { [ -n "$LAUNCH_PID" ] || return 0; kill -INT -- "-$LAUNCH_PID" 2>/dev/null || true
+  for _ in $(seq 1 30); do kill -0 -- "-$LAUNCH_PID" 2>/dev/null || break; sleep 0.5; done
+  kill -KILL -- "-$LAUNCH_PID" 2>/dev/null || true; LAUNCH_PID=""; sleep 3; }
+trap stop_sim EXIT
+phase() { local name="$1"; shift; local la=(); while [ "$1" != "--" ]; do la+=("$1"); shift; done; shift
+  export GZ_PARTITION="probe_${name}_$$"
+  setsid ros2 launch robotros_sim sim.launch.py headless:=true "${la[@]}" > "$LOG_DIR/$name.log" 2>&1 &
+  LAUNCH_PID=$!; local rc=0; timeout 1500 python3 "$CHECK" "$@" || rc=$?; stop_sim
+  echo "collision-ahead lines: $(grep -ac 'collision ahead' "$LOG_DIR/$name.log")"
+  echo "== $name rc=$rc"; }
+phase mapping mode:=mapping -- mapping --map-out "$MAP"
+phase accept mode:=nav "map:=$MAP.yaml" -- nav --goal -2.3 0.0 3.14159 --goal 0.7 -1.5 0.0 --runs 10 --acceptance || true
+phase passage mode:=nav "map:=$MAP.yaml" -- nav --goal 0.7 -1.5 0.0 --goal 2.5 -0.775 0.0 --runs 9 || true
