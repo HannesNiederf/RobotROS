@@ -22,7 +22,8 @@ from collections.abc import Callable
 import rclpy
 from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
 from nav2_msgs.action import NavigateToPose
-from nav_msgs.msg import OccupancyGrid, Odometry
+from nav2_msgs.msg import CollisionMonitorState
+from nav_msgs.msg import OccupancyGrid, Odometry, Path
 from rclpy.action import ActionClient
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -34,6 +35,9 @@ from robotros_interfaces.srv import SetArm
 from std_srvs.srv import Trigger
 
 WAIT_S = 180.0  # wall-clock bound for start-up of Gazebo plus the stack on a slow CI runner
+# Narrow passage of worlds/generic.sdf (0.45 m, spec section 14): wall x = 1.5, free between these y values.
+PASSAGE_X = 1.5
+PASSAGE_Y = (-1.0, -0.55)
 
 
 def yaw_of(q) -> float:  # noqa: ANN001
@@ -59,6 +63,10 @@ class NavCheck(Node):
         self.initial = self.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
         self.arm_client = self.create_client(SetArm, "/hw/set_arm")
         self.nav = ActionClient(self, NavigateToPose, "/navigate_to_pose")
+        # Diagnostics while a goal runs (MEASURE lines): AMCL corrections, planned path, collision monitor.
+        self.track: dict | None = None
+        self.create_subscription(Path, "/plan", self._on_plan, 10)
+        self.create_subscription(CollisionMonitorState, "/collision_monitor_state", self._on_cm, 10)
 
     def _on_map(self, msg: OccupancyGrid) -> None:
         self.map = msg
@@ -70,7 +78,53 @@ class NavCheck(Node):
         self.safety = msg
 
     def _on_amcl(self, msg: PoseWithCovarianceStamped) -> None:
+        if self.track is not None and self.truth is not None:
+            a, t = msg.pose.pose.position, self.truth.pose.pose.position
+            err = math.hypot(a.x - t.x, a.y - t.y)
+            prev = self.track.get("last")
+            if prev is not None:
+                # Jump of one AMCL update = change of the AMCL pose minus the true motion in the same interval.
+                jump = math.hypot((a.x - prev[0]) - (t.x - prev[2]), (a.y - prev[1]) - (t.y - prev[3]))
+                self.track["jumps"].append(jump)
+            self.track["last"] = (a.x, a.y, t.x, t.y)
+            self.track["errs"].append(err)
         self.amcl = msg
+
+    def _on_plan(self, msg: Path) -> None:
+        if self.track is not None and msg.poses:
+            self.track["plans"] += 1
+            gap = [p.pose.position for p in msg.poses if abs(p.pose.position.x - PASSAGE_X) < 0.06]
+            if gap and all(PASSAGE_Y[0] < p.y < PASSAGE_Y[1] for p in gap):
+                self.track["plans_through_passage"] += 1
+
+    def _on_cm(self, msg: CollisionMonitorState) -> None:
+        if self.track is not None and msg.action_type != 0:
+            self.track["cm_events"] += 1
+
+    def track_start(self) -> None:
+        self.track = {"jumps": [], "errs": [], "last": None, "plans": 0, "plans_through_passage": 0,
+                      "cm_events": 0, "min_clear": math.inf, "crossed": False}
+
+    def track_truth(self) -> None:
+        """Clearance of the true footprint centre to the passage walls while the robot is inside the passage."""
+        if self.track is None or self.truth is None:
+            return
+        t = self.truth.pose.pose.position
+        if abs(t.x - PASSAGE_X) < 0.2 and PASSAGE_Y[0] - 0.1 < t.y < PASSAGE_Y[1] + 0.1:
+            self.track["min_clear"] = min(self.track["min_clear"], t.y - PASSAGE_Y[0], PASSAGE_Y[1] - t.y)
+            self.track["crossed"] = True
+
+    def track_report(self, run: int) -> None:
+        tr, self.track = self.track, None
+        if tr is None:
+            return
+        jumps, errs = sorted(tr["jumps"]) or [math.nan], sorted(tr["errs"]) or [math.nan]
+        print(f"MEASURE run {run}: AMCL updates {len(tr['jumps'])}, jump median {jumps[len(jumps) // 2]:.3f} m, "
+              f"p90 {jumps[int(0.9 * (len(jumps) - 1))]:.3f} m, max {jumps[-1]:.3f} m; AMCL-truth median "
+              f"{errs[len(errs) // 2]:.3f} m, max {errs[-1]:.3f} m", flush=True)
+        print(f"MEASURE run {run}: plans {tr['plans']}, through the passage {tr['plans_through_passage']}; "
+              f"collision monitor events {tr['cm_events']}; in passage {tr['crossed']}, "
+              f"min clearance of the centre {tr['min_clear']:.3f} m", flush=True)
 
     def amcl_vs_truth(self, label: str) -> None:
         """Diagnostics: AMCL pose (map frame) against the ground truth (world frame)."""
@@ -196,6 +250,7 @@ class NavCheck(Node):
         goal.pose.pose.position.x, goal.pose.pose.position.y = gx, gy
         goal.pose.pose.orientation.z, goal.pose.pose.orientation.w = math.sin(gyaw / 2), math.cos(gyaw / 2)
         t0 = self.sim_now()
+        self.track_start()
         send = self.nav.send_goal_async(goal)
         self.spin_until(send.done, 30.0)
         handle = send.result() if send.done() else None
@@ -203,9 +258,10 @@ class NavCheck(Node):
         if handle is None or not handle.accepted:
             return None
         result = handle.get_result_async()
-        self.spin_until(result.done, 600.0)
+        self.spin_until(lambda: (self.track_truth(), result.done())[1], 600.0)
         status = result.result().status if result.done() else None
         took = (self.sim_now() - t0).nanoseconds / 1e9
+        self.track_report(run)
         self.report(status == 4, f"run {run}: NavigateToPose SUCCEEDED (status {status}) in {took:.1f} s sim")
         self.sim_sleep(1.0)
         self.amcl_vs_truth(f"run {run} end")
