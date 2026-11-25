@@ -12,6 +12,10 @@ Arguments:
   rviz      true: RViz with robotros_sim/rviz/robotros.rviz
 """
 
+from pathlib import Path
+
+import yaml
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
@@ -24,6 +28,8 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description() -> LaunchDescription:
     sim_share = FindPackageShare("robotros_sim")
+    sim_hw_yaml = Path(get_package_share_directory("robotros_sim")) / "config" / "sim_hw.yaml"
+    gz_track_scale = float(yaml.safe_load(sim_hw_yaml.read_text(encoding="utf-8"))["gazebo_track_scale"])
     world = LaunchConfiguration("world")
     headless = LaunchConfiguration("headless")
     world_file = PathJoinSubstitution([sim_share, "worlds", PythonExpression(["'", world, "' + '.sdf'"])])
@@ -44,7 +50,7 @@ def generate_launch_description() -> LaunchDescription:
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([FindPackageShare("robotros_description"), "launch", "description.launch.py"])
         ),
-        launch_arguments={"use_sim_time": "true", "sim": "true"}.items(),
+        launch_arguments={"use_sim_time": "true", "sim": "true", "gz_track_scale": str(gz_track_scale)}.items(),
     )
 
     spawn = Node(

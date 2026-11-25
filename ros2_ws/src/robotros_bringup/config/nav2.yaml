@@ -195,7 +195,7 @@ behavior_server:
     local_footprint_topic: local_costmap/published_footprint
     global_footprint_topic: global_costmap/published_footprint
     cycle_frequency: 10.0
-    # The spec's behavior tree (navigate_wait_replan.xml) only waits. Spin, BackUp and DriveOnHeading are loaded
+    # navigate_wait_replan.xml uses Wait and BackUp (recovery, ADR 0002). Spin and DriveOnHeading are loaded
     # because bt_navigator also loads the default NavigateThroughPoses tree, which needs them (Jazzy).
     behavior_plugins: ["spin", "backup", "drive_on_heading", "wait"]
     spin:

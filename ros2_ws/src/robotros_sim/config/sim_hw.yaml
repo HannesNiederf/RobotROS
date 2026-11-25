@@ -19,3 +19,9 @@ dock:
 motor_tau_ms: 100               # wheel speed lag of the simulated Nano (as fake_nano)
 hub_travel_ms: 3000             # hub time between the limit switches
 step_period_s: 0.01             # model step (simulation time)
+# Effective track of the Gazebo DiffDrive plugin = track_width_m * track_scale * this factor (calibration C3 done in
+# the simulation). Gazebo's wheel contact slips when the robot turns: with factor 1.0 the wheel odometry reported
+# 360 deg for a true 312.6 deg turn in place (both at 0.3 and 0.6 rad/s), straight driving matched to 1 mm
+# (CI measurement 25.11.2026, sim_start_check.py). 360 / 312.45 = 1.152. The wheel positions of the model stay
+# at the real track; only the plugin's command and odometry use this value. Rechecked by sim_start_check.py.
+gazebo_track_scale: 1.152

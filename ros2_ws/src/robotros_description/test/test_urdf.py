@@ -18,8 +18,11 @@ ROBOT_YAML = PKG.parent / "robotros_bringup" / "config" / "robot.yaml"
 FRAMES = {"base_footprint", "base_link", "laser", "us_front", "us_rear", "bumper", "left_wheel", "right_wheel"}
 
 
-def expand(sim: bool) -> ET.Element:
-    doc = xacro.process_file(str(XACRO), mappings={"robot_yaml": str(ROBOT_YAML), "sim": str(sim).lower()})
+def expand(sim: bool, gz_track_scale: float | None = None) -> ET.Element:
+    mappings = {"robot_yaml": str(ROBOT_YAML), "sim": str(sim).lower()}
+    if gz_track_scale is not None:
+        mappings["gz_track_scale"] = str(gz_track_scale)
+    doc = xacro.process_file(str(XACRO), mappings=mappings)
     return ET.fromstring(doc.toxml())
 
 
@@ -115,3 +118,12 @@ def test_sim_plugins(cfg: dict) -> None:
     assert float(sensor.findtext("lidar/range/min")) == pytest.approx(0.15)
     assert float(sensor.findtext("lidar/range/max")) == pytest.approx(12.0)
     assert float(sensor.findtext("update_rate")) == pytest.approx(10.0)
+
+
+def test_gz_track_scale_only_changes_the_plugin(cfg: dict) -> None:
+    track = cfg["track_width_m"] * cfg["track_scale"]
+    root = expand(sim=True, gz_track_scale=1.25)
+    dd = {p.get("name"): p for p in root.iter("plugin")}["gz::sim::systems::DiffDrive"]
+    assert float(dd.findtext("wheel_separation")) == pytest.approx(track * 1.25)
+    left, _ = origin(joint(root, "left_wheel_joint"))
+    assert left == pytest.approx([0, track / 2, 0])
