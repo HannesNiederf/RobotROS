@@ -100,13 +100,15 @@ if [ "$CHECK" = true ]; then
   rc=0
   # The two activity viewers (ADR 0004) run along, in German, and must show what the check provokes.
   VIEW_LOG="$LOG_DIR/$MODE.view"
-  ros2 run robotros_mission activity_view now --lang de --i18n "$ROOT/web_ui/i18n" > "$VIEW_LOG.now" 2>&1 &
+  VIEW="$ROOT/ros2_ws/install/robotros_mission/lib/robotros_mission/activity_view"
+  "$VIEW" now --lang de --i18n "$ROOT/web_ui/i18n" > "$VIEW_LOG.now" 2>&1 &
   VIEW_NOW=$!
-  ros2 run robotros_mission activity_view plan --lang de --i18n "$ROOT/web_ui/i18n" > "$VIEW_LOG.plan" 2>&1 &
+  "$VIEW" plan --lang de --i18n "$ROOT/web_ui/i18n" > "$VIEW_LOG.plan" 2>&1 &
   VIEW_PLAN=$!
   python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/sim_start_check.py" "$MODE" || rc=$?
   kill -INT "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
-  wait "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
+  for _ in $(seq 1 20); do kill -0 "$VIEW_NOW" 2> /dev/null || kill -0 "$VIEW_PLAN" 2> /dev/null || break; sleep 0.25; done
+  kill -KILL "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
   echo "---- activity_view now (German) ----"
   tr '\r' '\n' < "$VIEW_LOG.now" | grep -a . | tail -n 25 || true
   if [ "$MODE" = nav ]; then
