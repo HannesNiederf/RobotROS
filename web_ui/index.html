@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>robotROS</title>
+  <link rel="stylesheet" href="css/main.css">
+  <script src="vendor/roslib.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">robotROS</div>
+    <div id="conn" class="pill" data-state="connecting"></div>
+    <div id="safety" class="pill"></div>
+    <div class="activity">
+      <div><span class="label" data-i18n="activity.title"></span> <span id="activity-now"></span></div>
+      <div><span class="label" data-i18n="plan.title"></span> <span id="activity-plan"></span></div>
+    </div>
+    <div id="langs" class="langs"></div>
+  </header>
+  <main id="page-map">
+    <canvas id="map-canvas"></canvas>
+    <div class="hint" data-i18n="map.tap_hint"></div>
+    <div id="goal-dialog" class="dialog" hidden>
+      <div class="dialog-box">
+        <div class="dialog-title" data-i18n="map.goal.title"></div>
+        <div id="goal-dialog-text"></div>
+        <div class="dialog-buttons">
+          <button id="goal-cancel" data-i18n="ui.cancel"></button>
+          <button id="goal-ok" class="primary" data-i18n="map.goal.go"></button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="overlay-lost" class="overlay" hidden><div data-i18n="ui.connection.lost_long"></div></div>
+</body>
+</html>

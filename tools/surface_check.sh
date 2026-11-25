@@ -123,7 +123,7 @@ do_test() ( ros_env && cd ros2_ws && colcon test --event-handlers console_direct
 # (PYTHONPATH, pytest plugins of ROS), and print the header and a summary of everything not passed.
 do_pytest() {
   env -u PYTHONPATH -u AMENT_PREFIX_PATH PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
-    python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test ros2_ws/src/robotros_mission/test -ra -p no:cacheprovider
+    python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test ros2_ws/src/robotros_mission/test ros2_ws/src/robotros_map/test -ra -p no:cacheprovider
 }
 do_fw() {
   cmake -S firmware/test/host -B "$OUT/fw_build" -DWITH_SANITIZERS=ON && cmake --build "$OUT/fw_build" &&
@@ -147,6 +147,7 @@ fi
 if python3 -c "import pytest, yaml" 2> /dev/null; then step pytest do_pytest; else skip pytest "python3-pytest or yaml missing"; fi
 if have ruff; then step ruff ruff check .; else skip ruff "ruff not installed"; fi
 step i18n python3 tools/check_i18n.py
+if have node; then step web_ui_unit node --test web_ui/test/*.test.mjs; else skip web_ui_unit "node not installed"; fi
 if have cmake && have g++; then step firmware_host do_fw; else skip firmware_host "cmake or g++ missing"; fi
 if ! grep -q "^FAIL|colcon_build" "$SUMMARY"; then
   step sim_smoke do_sim

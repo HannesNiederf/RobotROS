@@ -1,0 +1,7 @@
+# map_manager (robotros_map, ADR 0005). Spec 5.3: web data every 5 s and on change, /robot_pose at 5 Hz.
+map_manager:
+  ros__parameters:
+    map_frame: map
+    base_frame: base_footprint
+    republish_period_s: 5.0
+    pose_rate_hz: 5.0

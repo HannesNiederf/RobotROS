@@ -1,7 +1,7 @@
 """Mapping or navigation stack of robotROS (softwarespezifikation.md sections 3.3, 7.1, 7.2).
 
 Arguments:
-  mode          (both: activity_narrator, ADR 0004)
+  mode          (both: activity_narrator, ADR 0004; map_manager, ADR 0005)
                 mapping: scan_masker, slam_toolbox (online_async), twist_mux A/B, collision_monitor
                 nav:     scan_masker, map_server, amcl, Nav2 (planner, controller, behaviors, bt_navigator,
                          velocity_smoother), twist_mux A/B, collision_monitor
@@ -46,6 +46,9 @@ def _setup(context: LaunchContext) -> list:
     t = {"use_sim_time": sim}
     actions: list = [
         Node(package="robotros_obstacles", executable="scan_masker", parameters=[t], output="screen"),
+        # Web map image, map meta, /robot_pose, /map/get_snapshot (map_manager first part, ADR 0005).
+        Node(package="robotros_map", executable="map_manager", name="map_manager",
+             parameters=[os.path.join(cfg, "map_manager.yaml"), t], output="screen"),
         # Plain-language "now / plan" display, topic /activity (ADR 0004).
         Node(package="robotros_mission", executable="activity_narrator", name="activity_narrator",
              parameters=[os.path.join(cfg, "activity.yaml"), t], output="screen"),

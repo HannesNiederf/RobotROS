@@ -10,6 +10,7 @@ Arguments:
   map       map YAML for mode nav
   auto      true: sim_helper arms the robot once and (mode nav) sets the initial pose (tools/sim_start.sh)
   rviz      true: RViz with robotros_sim/rviz/robotros.rviz
+  web       true: browser UI on http://localhost:8080 and rosbridge on port 9090 (robotros_web)
 """
 
 from pathlib import Path
@@ -111,6 +112,15 @@ def generate_launch_description() -> LaunchDescription:
         condition=IfCondition(LaunchConfiguration("auto")),
     )
 
+    # Browser UI (robotros_web): http://localhost:8080, rosbridge on port 9090 (ADR 0005).
+    web = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare("robotros_web"), "launch", "web.launch.py"])
+        ),
+        launch_arguments={"use_sim_time": "true"}.items(),
+        condition=IfCondition(LaunchConfiguration("web")),
+    )
+
     rviz = Node(
         package="rviz2",
         executable="rviz2",
@@ -131,6 +141,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("map", default_value=""),
             DeclareLaunchArgument("auto", default_value="false"),
             DeclareLaunchArgument("rviz", default_value="false"),
+            DeclareLaunchArgument("web", default_value="false"),
             gz_headless,
             gz_gui,
             description,
@@ -139,6 +150,7 @@ def generate_launch_description() -> LaunchDescription:
             hw_adapter,
             navigation,
             helper,
+            web,
             rviz,
         ]
     )

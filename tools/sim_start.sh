@@ -84,8 +84,9 @@ LOG_DIR="$ROOT/build/sim_start"
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/$MODE.log"
 echo "Starting simulation ($MODE). Log: $LOG"
+echo "Browser UI (ADR 0005): http://localhost:8080  (open it in Firefox on this computer)"
 setsid ros2 launch robotros_sim sim.launch.py "${LAUNCH_ARGS[@]}" headless:=$HEADLESS auto:=true rviz:=true \
-  > "$LOG" 2>&1 &
+  web:=true > "$LOG" 2>&1 &
 LAUNCH_PID=$!
 
 stop() {
@@ -118,6 +119,14 @@ if [ "$CHECK" = true ]; then
   else
     echo "FAIL  sim_rtf could not measure the real time factor"
     rc=1
+  fi
+  if [ "$MODE" = nav ]; then
+    # Browser UI end-to-end (ADR 0005). Required when WEB_UI_CHECK=1 (CI); otherwise skipped without Playwright.
+    wrc=0
+    python3 "$ROOT/tools/web_ui_check.py" --shot "$LOG_DIR/web_ui.png" || wrc=$?
+    if [ "$wrc" -eq 1 ] || { [ "$wrc" -eq 2 ] && [ "${WEB_UI_CHECK:-0}" = 1 ]; }; then
+      rc=1
+    fi
   fi
   echo "---- activity_view now (German) ----"
   tr '\r' '\n' < "$VIEW_LOG.now" | grep -a . | tail -n 25 || true
