@@ -108,6 +108,8 @@ jobs:
         run: |
           xvfb-run -a tools/sim_start.sh mapping --check
           WEB_UI_CHECK=1 xvfb-run -a tools/sim_start.sh nav build/sim_nav/generic_map.yaml --check
+      - name: Split robot software (distributed simulation, robot part locally, ADR 0006)
+        run: WEB_UI_CHECK=1 xvfb-run -a tools/sim_start.sh nav build/sim_nav/generic_map.yaml --check --pi=local
       - name: Keep simulation logs
         if: always()
         uses: actions/upload-artifact@v4

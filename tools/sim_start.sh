@@ -11,6 +11,11 @@
 #   tools/sim_start.sh rtf [SECONDS]                  real time factor of the running simulation (another terminal)
 #                                                      language from $LANG (de/it/en), or add --lang de|en|it
 #   --check            test mode (CI): no keyboard, runs sim_start_check.py and exits with its result
+#   --pi[=HOST]        distributed simulation (ADR 0006): Gazebo and RViz here, the robot software
+#                      (tools/pi_robot_software.sh) on the Pi over SSH, default HOST robot-ros@robotros.local.
+#                      Needs an SSH key (ssh-copy-id) and the same workspace built on the Pi. Prints the Pi's
+#                      CPU load (PILOAD) at the end. --pi=local runs the "Pi" part on this computer (CI).
+#                      now/plan/rtf/save in other terminals follow automatically while a --pi session runs.
 #
 # The robot is armed once automatically and, in mode nav, gets its initial pose automatically
 # (simulation only, sim_helper). After an E-stop it must be armed by hand, as on the robot.
@@ -25,8 +30,11 @@ GZ_GUI=false
 CHECK=false
 ARG=""
 VIEW_ARGS=()
+PI=""
 for a in "$@"; do
   case "$a" in
+    --pi) PI="robot-ros@robotros.local" ;;
+    --pi=*) PI="${a#--pi=}" ;;
     --gazebo-gui) GZ_GUI=true ;;
     --lang) VIEW_ARGS+=(--lang) ;;
     de|en|it) VIEW_ARGS+=("$a") ;;
@@ -37,6 +45,14 @@ done
 
 export ROS_DOMAIN_ID="${SIM_DOMAIN_ID:-77}"
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+LOG_DIR="$ROOT/build/sim_start"
+PI_MARK="$LOG_DIR/.pi_session"
+# Distributed simulation: DDS must reach the Pi over the WLAN (still only domain 77, never the robot's 42).
+if [ -n "$PI" ] && [ "$PI" != local ]; then
+  export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
+elif [ -z "$PI" ] && [ -f "$PI_MARK" ] && [[ "$MODE" =~ ^(now|plan|rtf|save)$ ]]; then
+  export ROS_AUTOMATIC_DISCOVERY_RANGE="$(cat "$PI_MARK")"
+fi
 export GZ_IP=127.0.0.1
 export GZ_PARTITION="robotros_sim_$USER"
 if [ "$ROS_DOMAIN_ID" = "42" ]; then
@@ -80,16 +96,71 @@ esac
 
 HEADLESS=true
 [ "$GZ_GUI" = true ] && HEADLESS=false
-LOG_DIR="$ROOT/build/sim_start"
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/$MODE.log"
+PI_PID=""
+WEB_URL="http://localhost:8080"
+if [ -n "$PI" ]; then
+  PI_LOG="$LOG_DIR/$MODE.pi.log"
+  REMOTE_MAP=""
+  if [ "$PI" = local ]; then
+    REMOTE_MAP="${LAUNCH_ARGS[1]#map:=}"
+    echo "Robot software runs locally (--pi=local). Log: $PI_LOG"
+    PI_DISCOVERY=LOCALHOST setsid "$ROOT/tools/pi_robot_software.sh" "$MODE" ${REMOTE_MAP:+"$REMOTE_MAP"} \
+      > "$PI_LOG" 2>&1 &
+    PI_PID=$!
+  else
+    if ! ssh -o BatchMode=yes -o ConnectTimeout=10 "$PI" true 2> /dev/null; then
+      echo "Cannot log in to $PI without a password. Once: ssh-copy-id $PI   (then try again)" >&2
+      exit 1
+    fi
+    if [ "$MODE" = nav ]; then
+      # Copy the map (YAML and its image) to the Pi, same file names, into ~/robotros_sim_maps/.
+      MAP_ABS="${LAUNCH_ARGS[1]#map:=}"
+      IMG="$(sed -n 's/^image:[[:space:]]*//p' "$MAP_ABS" | tr -d "\"'")"
+      [ "${IMG:0:1}" = / ] || IMG="$(dirname "$MAP_ABS")/$IMG"
+      ssh "$PI" mkdir -p robotros_sim_maps && scp -q "$MAP_ABS" "$IMG" "$PI:robotros_sim_maps/" || exit 1
+      REMOTE_MAP="robotros_sim_maps/$(basename "$MAP_ABS")"
+    fi
+    WEB_URL="http://${PI#*@}:8080"
+    echo "Robot software runs on $PI. Its output: $PI_LOG"
+    # -tt: closing the connection (Ctrl+C here) hangs up the remote side, which then stops cleanly.
+    ssh -tt "$PI" "cd RobotROS && tools/pi_robot_software.sh $MODE ${REMOTE_MAP:+\$HOME/$REMOTE_MAP}" \
+      > "$PI_LOG" 2>&1 < /dev/null &
+    PI_PID=$!
+  fi
+  echo "$ROS_AUTOMATIC_DISCOVERY_RANGE" > "$PI_MARK"
+  SIM_ARGS=(robot_software:=false)
+else
+  SIM_ARGS=("${LAUNCH_ARGS[@]}" auto:=true web:=true)
+fi
 echo "Starting simulation ($MODE). Log: $LOG"
-echo "Browser UI (ADR 0005): http://localhost:8080  (open it in Firefox on this computer)"
-setsid ros2 launch robotros_sim sim.launch.py "${LAUNCH_ARGS[@]}" headless:=$HEADLESS auto:=true rviz:=true \
-  web:=true > "$LOG" 2>&1 &
+echo "Browser UI (ADR 0005): $WEB_URL  (open it in Firefox on this computer)"
+setsid ros2 launch robotros_sim sim.launch.py "${SIM_ARGS[@]}" headless:=$HEADLESS rviz:=true > "$LOG" 2>&1 &
 LAUNCH_PID=$!
 
+pi_load_summary() {
+  [ -n "$PI_PID" ] && [ -f "$PI_LOG" ] || return 0
+  python3 - "$PI_LOG" <<'PY'
+import re, sys
+vals = [(int(b), int(m)) for b, m in re.findall(r"PILOAD cpu_busy=(\d+)% mem_used=(\d+)MiB", open(sys.argv[1], errors="replace").read())]
+if vals:
+    busy = [b for b, _ in vals]
+    print(f"Pi load: CPU busy mean {sum(busy) / len(busy):.0f} %, max {max(busy)} % ({len(busy)} samples of 5 s); "
+          f"memory used max {max(m for _, m in vals)} MiB")
+else:
+    print("Pi load: no samples")
+PY
+}
+
 stop() {
+  if [ -n "$PI_PID" ]; then
+    pi_load_summary
+    kill -TERM -- "-$PI_PID" 2> /dev/null || kill -TERM "$PI_PID" 2> /dev/null || true
+    for _ in $(seq 1 30); do kill -0 "$PI_PID" 2> /dev/null || break; sleep 0.5; done
+    kill -KILL -- "-$PI_PID" 2> /dev/null || kill -KILL "$PI_PID" 2> /dev/null || true
+    rm -f "$PI_MARK"
+  fi
   echo "Stopping simulation ..."
   kill -INT -- "-$LAUNCH_PID" 2> /dev/null || true
   for _ in $(seq 1 30); do
@@ -123,7 +194,7 @@ if [ "$CHECK" = true ]; then
   if [ "$MODE" = nav ]; then
     # Browser UI end-to-end (ADR 0005). Required when WEB_UI_CHECK=1 (CI); otherwise skipped without Playwright.
     wrc=0
-    python3 "$ROOT/tools/web_ui_check.py" --shot "$LOG_DIR/web_ui.png" || wrc=$?
+    python3 "$ROOT/tools/web_ui_check.py" --url "$WEB_URL/" --shot "$LOG_DIR/web_ui.png" || wrc=$?
     if [ "$wrc" -eq 1 ] || { [ "$wrc" -eq 2 ] && [ "${WEB_UI_CHECK:-0}" = 1 ]; }; then
       rc=1
     fi
@@ -157,6 +228,10 @@ if [ "$CHECK" = true ]; then
   if [ "$rc" -ne 0 ]; then
     echo "---- $LOG: errors and warnings (first 60) ----"
     grep -aiE "error|fail|exception|died" "$LOG" | head -n 60 || true
+    if [ -n "$PI_PID" ]; then
+      echo "---- $PI_LOG: errors and warnings (first 60) ----"
+      grep -aiE "error|fail|exception|died" "$PI_LOG" | head -n 60 || true
+    fi
   fi
   exit "$rc"
 fi
