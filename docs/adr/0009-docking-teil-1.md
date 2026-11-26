@@ -27,7 +27,9 @@ Status: angenommen (Claude, 26.11.2026)
   beim Abstellen nur das Wagenquadrat (`release_slot_margin_m` = 0, hier festgelegt). Grund: Platz S3 der
   Simulationswelt liegt 0,25 m vor der Wand; mit 0,24 m halber Platzgröße und einigen Zentimetern Posenfehler zählte
   die Wand als „belegt“ (E302). Mit 0,20 m beim Abholen fand der Check die Wagenfüße (±0,19 m) nicht mehr sicher
-  (E301). Am echten Aufbau prüfen.
+  (E301). Zusätzlich endet der Platz beim Abstellen hinten 6 cm früher (`release_slot_back_trim_m`), weil im
+  zweiten CI-Lauf die Wand nach einer langen Fahrt mit Posenfehler trotzdem im Platz lag; die vorderen Füße eines
+  dort stehenden Wagens liegen weiter im Platz. Am echten Aufbau prüfen.
 - **Blockiererkennung über die Geschwindigkeit aus `/odom`** (`stall_speed` 0,005 m/s) statt `stall_tps`
   (5 Ticks/s ≈ 0,002 m/s mit den Platzhaltern). Am echten Roboter prüfen.
 - Drehrichtung beim Wenden immer gegen den Uhrzeigersinn; die Seitenwahl nach Kosten der lokalen Costmap fehlt.

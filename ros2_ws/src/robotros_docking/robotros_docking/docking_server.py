@@ -49,6 +49,7 @@ class DockingServer(Node):
             "base_frame": "base_footprint",
             "slot_margin_m": 0.04,
             "release_slot_margin_m": 0.0,
+            "release_slot_back_trim_m": 0.06,
             "cart_half_size_m": 0.20,
             "slot_free_max_points": 3,
             "cart_present_min_points": 8,
@@ -209,8 +210,9 @@ class DockingServer(Node):
         if scan is None or robot is None:
             return ""  # no data: the maneuver's own stall detection still protects
         margin = self.p["slot_margin_m"] if kind == "ENGAGE" else self.p["release_slot_margin_m"]
+        trim = 0.0 if kind == "ENGAGE" else self.p["release_slot_back_trim_m"]
         n = slot_points(list(scan.ranges), scan.angle_min, scan.angle_increment, robot, st,
-                        self.p["cart_half_size_m"] + margin, self.p["range_max"])
+                        self.p["cart_half_size_m"] + margin, self.p["range_max"], trim)
         self.get_logger().info(f"slot check {kind}: {n} scan points in the slot")
         if kind == "RELEASE" and n > self.p["slot_free_max_points"]:
             return "E302"

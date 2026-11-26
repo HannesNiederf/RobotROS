@@ -83,8 +83,10 @@ def axis_errors(p: Pose, st: Station) -> tuple[float, float, float]:
 
 
 def slot_points(ranges: list[float], angle_min: float, angle_inc: float, robot: Pose, st: Station,
-                half_size: float, range_max: float) -> int:
-    """Number of scan points inside the square slot of half size `half_size` around S (D-37)."""
+                half_size: float, range_max: float, back_trim: float = 0.0) -> int:
+    """Number of scan points inside the slot around S (D-37): ±half_size across, from -(half_size - back_trim)
+    (back of the place, away from the robot) to +half_size along û. back_trim keeps a wall right behind the
+    place out of the count."""
     n = 0
     c, s = math.cos(st.yaw), math.sin(st.yaw)
     for i, r in enumerate(ranges):
@@ -93,7 +95,7 @@ def slot_points(ranges: list[float], angle_min: float, angle_inc: float, robot: 
         a = robot.yaw + angle_min + i * angle_inc
         px, py = robot.x + r * math.cos(a) - st.x, robot.y + r * math.sin(a) - st.y
         lx, ly = px * c + py * s, -px * s + py * c
-        if abs(lx) <= half_size and abs(ly) <= half_size:
+        if -(half_size - back_trim) <= lx <= half_size and abs(ly) <= half_size:
             n += 1
     return n
 

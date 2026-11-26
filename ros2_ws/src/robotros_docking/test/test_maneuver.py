@@ -154,3 +154,24 @@ def test_slot_points() -> None:
         ranges[i] = math.hypot(wx - robot.x, wy - robot.y)
     assert slot_points(ranges, -math.pi, inc, robot, ST, 0.24, 8.0) == 4
     assert slot_points([math.inf] * n, -math.pi, inc, robot, ST, 0.24, 8.0) == 0
+
+
+def test_slot_back_trim_ignores_a_wall_behind_the_place() -> None:
+    robot = p_pre()
+    n = 720
+    inc = 2 * math.pi / n
+    ranges = [math.inf] * n
+    # wall points 0.22 m behind S (a few cm of pose error closer than the real 0.25 m)
+    for k in range(-10, 11):
+        wx, wy = ST.x - 0.22, ST.y + 0.02 * k
+        a = math.atan2(wy - robot.y, wx - robot.x) - robot.yaw
+        i = round((a + math.pi) / inc) % n
+        ranges[i] = math.hypot(wx - robot.x, wy - robot.y)
+    assert slot_points(ranges, -math.pi, inc, robot, ST, 0.20, 8.0) == 0  # outside 0.20 anyway
+    ranges2 = [math.inf] * n
+    for k in range(-10, 11):
+        wx, wy = ST.x - 0.17, ST.y + 0.02 * k
+        a = math.atan2(wy - robot.y, wx - robot.x) - robot.yaw
+        ranges2[round((a + math.pi) / inc) % n] = math.hypot(wx - robot.x, wy - robot.y)
+    assert slot_points(ranges2, -math.pi, inc, robot, ST, 0.20, 8.0) > 3
+    assert slot_points(ranges2, -math.pi, inc, robot, ST, 0.20, 8.0, back_trim=0.06) == 0

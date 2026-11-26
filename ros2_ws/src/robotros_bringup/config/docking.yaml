@@ -23,6 +23,8 @@ docking_server:
     min_turn_omega: 0.08          # rad/s, smallest turn rate near the target heading (chosen here)
     slot_margin_m: 0.04           # m (T), slot = cart square + margin when picking up (cart present?)
     release_slot_margin_m: 0.0    # m, chosen here: with 0.04 a wall 0.25 m behind S counted as occupied, ADR 0009
+    release_slot_back_trim_m: 0.06  # m, chosen here: back edge of the free check moved 6 cm towards S (wall behind
+                                    # the place + pose error; the front feet of a cart stay inside), ADR 0009
     cart_half_size_m: 0.20        # m, cart 0.40 m outside (round 26 placeholder)
     slot_free_max_points: 3       # (T)
     cart_present_min_points: 8    # (T)
