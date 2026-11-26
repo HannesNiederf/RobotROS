@@ -4,7 +4,8 @@
 Needs Playwright (`pip install playwright` and `python3 -m playwright install --with-deps chromium`).
 Usage: web_ui_check.py [--url http://localhost:8080] [--goal X Y] [--shot FILE]
 Checks: no JavaScript error; rosbridge connected; map shown; robot pose and safety state "Ready"; the activity
-line is filled; tapping the map and confirming sends a goal and the robot drives towards it; language switch.
+line is filled; tapping the map and confirming creates a GOTO_POINT order and the robot drives there; the order
+appears as COMPLETED on the Orders page; STOP disarms, the acknowledge dialog arms again; language switch.
 Exit code 0 = PASS, 1 = FAIL, 2 = Playwright missing.
 """
 
@@ -72,7 +73,8 @@ def main() -> int:
             text = page.inner_text("#goal-dialog-text")
             report(page.is_visible("#goal-dialog"), f"tap on the map opens the confirmation ({text})")
             page.click("#goal-ok")
-            report(wait_js("!!window.robotros.state().lastGoal", 5), "goal sent (/goal_pose)")
+            report(wait_js("!!(window.robotros.state().lastGoal || {}).orderId", 10),
+                   "goal sent as GOTO_POINT order (/mission/create_order)")
             start = page.evaluate("window.robotros.state().pose")
             d0 = math.hypot(start["x"] - gx, start["y"] - gy)
             reached = wait_js(f"(() => {{ const p = window.robotros.state().pose; "
@@ -81,6 +83,25 @@ def main() -> int:
             d1 = math.hypot(end["x"] - gx, end["y"] - gy)
             report(reached, f"robot drove to the tapped goal ({d0:.2f} m -> {d1:.2f} m)")
             report(wait_js("window.robotros.state().planLength > 0", 5) or reached, "planned path received (/plan)")
+            oid = page.evaluate("window.robotros.state().lastGoal.orderId")
+            done_js = f"(window.robotros.state().orders || []).some(o => o.id === {oid} && o.state === 'COMPLETED')"
+            report(wait_js(done_js, 20), f"order {oid} COMPLETED on /mission/orders")
+            page.evaluate("window.robotros.showPage('orders')")
+            report(wait_js(f"!!document.querySelector('#order-list [data-order-id=\"{oid}\"]')", 5),
+                   "Orders page lists the order")
+            page.evaluate("window.robotros.showPage('map')")
+
+        # Software E-stop button (spec 13.2) and the acknowledge dialog (spec 6.3).
+        page.click("#estop")
+        report(wait_js("document.getElementById('safety').dataset.state !== '3'", 10),
+               f"STOP button disarms the robot ('{page.inner_text('#safety')}')")
+        report(wait_js("!document.getElementById('ack-dialog').hidden", 10), "acknowledge dialog appears")
+        page.click("#ack-buttons button[data-mode='RESUME']")
+        report(wait_js("document.getElementById('safety').dataset.state === '3'", 10)
+               and wait_js("document.getElementById('ack-dialog').hidden", 5),
+               "arming in the dialog: robot armed again, dialog closed")
+        report(wait_js("document.getElementById('mission').dataset.state === 'IDLE'", 15),
+               f"mission state shown ('{page.inner_text('#mission')}')")
 
         page.click("button[data-lang='de']")
         report(wait_js("document.getElementById('conn').textContent === 'Verbunden'", 5),

@@ -417,7 +417,7 @@ class MissionManager(Node):
             msg.mode, msg.state, msg.step = s["mode"], s["state"], s["step"]
             msg.active_order_id = s["active_order_id"]
             msg.progress = float(s["progress"])
-            msg.message_key = f"mission.state.{s['state'].lower()}"
+            msg.message_key = f"mission.state.{s['state']}"
             msg.error_code = s["error_code"]
             msg.lifted = s["lifted"]
             msg.loc_sigma_xy = -1.0  # not measured yet

@@ -50,6 +50,7 @@ export class MapView {
     this.pose = null;
     this.plan = [];
     this.goal = null;
+    this.stations = [];
     this.tf = null;
     this.onTap = null;
     canvas.addEventListener("pointerup", (ev) => this._tap(ev));
@@ -73,6 +74,11 @@ export class MapView {
 
   setPlan(points) {
     this.plan = points;
+    this.draw();
+  }
+
+  setStations(stations) {
+    this.stations = stations || [];
     this.draw();
   }
 
@@ -117,6 +123,23 @@ export class MapView {
         else ctx.lineTo(c.px, c.py);
       });
       ctx.stroke();
+    }
+    for (const st of this.stations) {
+      // Square = taught station pose, short line = direction the front points (out of the box, ÄM-01 D-33).
+      const c = worldToCanvas(this.tf, st.pose.x, st.pose.y);
+      const h = Math.max(7, 0.15 * scale);
+      ctx.fillStyle = st.kind === "DOCK" ? "#7b1fa2" : st.occupied ? "#8d6e63" : "#ffffff";
+      ctx.strokeStyle = st.kind === "DOCK" ? "#4a148c" : "#4e342e";
+      ctx.lineWidth = 2;
+      ctx.fillRect(c.px - h, c.py - h, 2 * h, 2 * h);
+      ctx.strokeRect(c.px - h, c.py - h, 2 * h, 2 * h);
+      ctx.beginPath();
+      ctx.moveTo(c.px, c.py);
+      ctx.lineTo(c.px + 2 * h * Math.cos(st.pose.theta), c.py - 2 * h * Math.sin(st.pose.theta));
+      ctx.stroke();
+      ctx.fillStyle = "#263238";
+      ctx.font = "16px system-ui, sans-serif";
+      ctx.fillText(st.name, c.px + h + 4, c.py - h - 2);
     }
     if (this.goal) {
       const c = worldToCanvas(this.tf, this.goal.x, this.goal.y);
