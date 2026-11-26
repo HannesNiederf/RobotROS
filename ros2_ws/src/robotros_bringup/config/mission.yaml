@@ -1,0 +1,14 @@
+# mission_manager (robotros_mission, spec section 9, ADR 0007). Values from spez_parameter_tests.md 2.3 and 10.
+mission_manager:
+  ros__parameters:
+    db_path: /var/lib/robotros/robotros.db   # spec 12; the simulation overrides it (robot_software.launch.py)
+    min_order_v: 11.8          # V: an order starts only above this (spec 9.3, placeholder until C9)
+    nav_timeout_s: 180.0       # E206
+    turn_distance: 0.70        # m: pre-check point P_pre in front of a storage station (ÄM-01 D-33)
+    tick_hz: 5.0               # state machine cycle (chosen here)
+    status_rate_hz: 2.0        # /mission/status (spec 5.3)
+    republish_period_s: 5.0    # /mission/orders and /web/stations (spec 5.3)
+    localized_timeout_s: 2.0   # no /robot_pose for this long = not localized (chosen here)
+    free_threshold: 25         # map cell value 0..this counts as free for GOTO_POINT goals (chosen here)
+    arm_timeout_s: 1.0         # /hw/set_arm answer (spec 6.3)
+    server_wait_s: 2.0         # wait for the Nav2/docking action servers before a goal (chosen here)

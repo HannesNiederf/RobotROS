@@ -95,6 +95,7 @@ def generate_launch_description() -> LaunchDescription:
             "map": LaunchConfiguration("map"),
             "auto": LaunchConfiguration("auto"),
             "web": LaunchConfiguration("web"),
+            "db": LaunchConfiguration("db"),
         }.items(),
         condition=IfCondition(LaunchConfiguration("robot_software")),
     )
@@ -121,6 +122,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("rviz", default_value="false"),
             DeclareLaunchArgument("web", default_value="false"),
             DeclareLaunchArgument("robot_software", default_value="true"),
+            DeclareLaunchArgument("db", default_value="~/.robotros/sim.db"),
             gz_headless,
             gz_gui,
             description,

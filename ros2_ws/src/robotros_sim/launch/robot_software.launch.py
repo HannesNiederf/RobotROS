@@ -4,7 +4,8 @@ sim_hw_adapter (stands in for nano_bridge and both Nanos), navigation (mode mapp
 web UI (web). sim.launch.py includes it (robot_software:=true, everything on one computer); for the distributed
 simulation the Pi starts it alone (tools/sim_start.sh --pi) while the Surface runs Gazebo and RViz.
 
-Arguments: world (generic), mode (none|mapping|nav), map, auto (false), web (false).
+Arguments: world (generic), mode (none|mapping|nav), map, auto (false), web (false),
+db (~/.robotros/sim.db: mission database of the simulation, ADR 0007).
 """
 
 from launch import LaunchDescription
@@ -38,6 +39,7 @@ def generate_launch_description() -> LaunchDescription:
             "mode": LaunchConfiguration("mode"),
             "map": LaunchConfiguration("map"),
             "use_sim_time": "true",
+            "db_path": LaunchConfiguration("db"),
         }.items(),
         condition=IfCondition(PythonExpression(["'", LaunchConfiguration("mode"), "' != 'none'"])),
     )
@@ -74,6 +76,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("map", default_value=""),
             DeclareLaunchArgument("auto", default_value="false"),
             DeclareLaunchArgument("web", default_value="false"),
+            DeclareLaunchArgument("db", default_value="~/.robotros/sim.db"),
             hw_adapter,
             navigation,
             helper,

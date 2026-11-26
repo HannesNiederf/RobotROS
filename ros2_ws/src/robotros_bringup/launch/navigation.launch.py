@@ -1,12 +1,13 @@
 """Mapping or navigation stack of robotROS (softwarespezifikation.md sections 3.3, 7.1, 7.2).
 
 Arguments:
-  mode          (both: activity_narrator, ADR 0004; map_manager, ADR 0005)
+  mode          (both: activity_narrator, ADR 0004; map_manager, ADR 0005; mission_manager, ADR 0007)
                 mapping: scan_masker, slam_toolbox (online_async), twist_mux A/B, collision_monitor
                 nav:     scan_masker, map_server, amcl, Nav2 (planner, controller, behaviors, bt_navigator,
                          velocity_smoother), twist_mux A/B, collision_monitor
   map           map YAML for mode nav
   use_sim_time  true in the simulation
+  db_path       mission database (empty: db_path from mission.yaml)
 
 Velocity chain: controller -> /cmd_vel_ctrl -> velocity_smoother -> /cmd_vel_nav -> twist_mux_a (with
 /cmd_vel_manual) -> /cmd_vel_mux_a -> collision_monitor -> /cmd_vel_cm -> twist_mux_b (with /cmd_vel_docking)
@@ -44,6 +45,10 @@ def _setup(context: LaunchContext) -> list:
         fp = footprint_string(yaml.safe_load(f))
     nav2 = os.path.join(cfg, "nav2.yaml")
     t = {"use_sim_time": sim}
+    db_path = LaunchConfiguration("db_path").perform(context)
+    mission = {"mode": "MAPPING" if mode == "mapping" else "NORMAL", "map_yaml": map_yaml}
+    if db_path:
+        mission["db_path"] = os.path.expanduser(db_path)
     actions: list = [
         Node(package="robotros_obstacles", executable="scan_masker", parameters=[t], output="screen"),
         # Web map image, map meta, /robot_pose, /map/get_snapshot (map_manager first part, ADR 0005).
@@ -52,6 +57,9 @@ def _setup(context: LaunchContext) -> list:
         # Plain-language "now / plan" display, topic /activity (ADR 0004).
         Node(package="robotros_mission", executable="activity_narrator", name="activity_narrator",
              parameters=[os.path.join(cfg, "activity.yaml"), t], output="screen"),
+        # Orders, stations, software E-stop; the only writer of the database (mission_manager part 1, ADR 0007).
+        Node(package="robotros_mission", executable="mission_manager", name="mission_manager",
+             parameters=[os.path.join(cfg, "mission.yaml"), mission, t], output="screen"),
         Node(
             package="twist_mux",
             executable="twist_mux",
@@ -129,6 +137,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("mode", default_value="nav"),
             DeclareLaunchArgument("map", default_value=""),
             DeclareLaunchArgument("use_sim_time", default_value="false"),
+            DeclareLaunchArgument("db_path", default_value=""),
             OpaqueFunction(function=_setup),
         ]
     )

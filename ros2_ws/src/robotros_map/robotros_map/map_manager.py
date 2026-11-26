@@ -2,7 +2,8 @@
 
 Spec (softwarespezifikation.md 5.2/5.3): /web/map_image (PNG) and /web/map_meta on change and every
 republish_period_s; /robot_pose (map frame) at pose_rate_hz; /map/get_snapshot for UI start and reconnect.
-Map files, mode switching, stations, zones and contact points follow later (empty lists in the snapshot).
+Stations come from mission_manager (/web/stations, the only database writer, ADR 0007). Map files, mode switching,
+zones and contact points follow later (empty lists in the snapshot).
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
-from robotros_interfaces.msg import MapMeta
+from robotros_interfaces.msg import MapMeta, StationList
 from robotros_interfaces.srv import GetSnapshot
 from sensor_msgs.msg import CompressedImage
 from tf2_ros import Buffer, TransformException, TransformListener
@@ -43,6 +44,8 @@ class MapManager(Node):
         self.pub_meta = self.create_publisher(MapMeta, "web/map_meta", latched)
         self.pub_pose = self.create_publisher(PoseStamped, "robot_pose", 10)
         self.create_service(GetSnapshot, "map/get_snapshot", self.on_snapshot)
+        self.stations = StationList()
+        self.create_subscription(StationList, "web/stations", lambda m: setattr(self, "stations", m), latched)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.create_timer(self.get_parameter("republish_period_s").value, self.republish)
@@ -87,6 +90,7 @@ class MapManager(Node):
         res.success = self.image is not None
         if self.image is not None and self.meta is not None:
             res.map_image, res.map_meta = self.image, self.meta
+        res.stations = list(self.stations.stations)
         return res
 
 

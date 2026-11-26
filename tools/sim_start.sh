@@ -111,6 +111,11 @@ mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/$MODE.log"
 PI_PID=""
 PING_PID=""
+if [ "$CHECK" = true ]; then
+  # Fresh mission database per check run (ADR 0007), so earlier sessions cannot leave orders behind.
+  export SIM_DB="$LOG_DIR/$MODE.db"
+  rm -f "$SIM_DB" "$SIM_DB-wal" "$SIM_DB-shm"
+fi
 WEB_URL="http://localhost:8080"
 if [ -n "$PI" ]; then
   PI_LOG="$LOG_DIR/$MODE.pi.log"
@@ -148,7 +153,7 @@ if [ -n "$PI" ]; then
   echo "$ROS_AUTOMATIC_DISCOVERY_RANGE" > "$PI_MARK"
   SIM_ARGS=(robot_software:=false)
 else
-  SIM_ARGS=("${LAUNCH_ARGS[@]}" auto:=true web:=true)
+  SIM_ARGS=("${LAUNCH_ARGS[@]}" auto:=true web:=true ${SIM_DB:+"db:=$SIM_DB"})
 fi
 echo "Starting simulation ($MODE). Log: $LOG"
 echo "Browser UI (ADR 0005): $WEB_URL  (open it in Firefox on this computer)"
@@ -226,6 +231,10 @@ if [ "$CHECK" = true ]; then
     if [ "$wrc" -eq 1 ] || { [ "$wrc" -eq 2 ] && [ "${WEB_UI_CHECK:-0}" = 1 ]; }; then
       rc=1
     fi
+  fi
+  if [ "$MODE" = nav ]; then
+    # Orders, stations, software E-stop (mission_manager part 1, ADR 0007).
+    python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/mission_check.py" || rc=1
   fi
   echo "---- activity_view now (German) ----"
   tr '\r' '\n' < "$VIEW_LOG.now" | grep -a . | tail -n 25 || true
