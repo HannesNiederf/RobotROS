@@ -21,7 +21,7 @@ docking_server:
     max_omega_reverse: 0.30       # rad/s (3.1 step 4)
     hub_timeout_s: 6.0            # s, simulated hub travel 3 s (chosen here until C-measurement)
     min_turn_omega: 0.08          # rad/s, smallest turn rate near the target heading (chosen here)
-    slot_margin_m: 0.04           # m (T)
+    slot_margin_m: 0.0            # m (T; spec start 0.04 counted a wall 0.25 m behind S as occupied, ADR 0009)
     cart_half_size_m: 0.20        # m, cart 0.40 m outside (round 26 placeholder)
     slot_free_max_points: 3       # (T)
     cart_present_min_points: 8    # (T)
