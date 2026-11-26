@@ -138,7 +138,8 @@ class MissionCheck(Node):
                     f"{o.error_code if o else ''})")
         d = self.dist_to(S1[0] + 0.7, S1[1])
         self.report(d < 0.35, f"robot stopped at the pre-check point of S1 ({d:.2f} m away)")
-        self.report(any(a.code == "E305" for a in self.alerts), "alert E305 on /mission/alerts")
+        self.report(self.spin_until(lambda: any(a.code == "E305" for a in self.alerts), 5.0),
+                    "alert E305 on /mission/alerts")
         still = {s.id: s.occupied for s in self.stations.stations} if self.stations else {}
         self.report(still.get(s1) is True and still.get(s2) is False, "cart still at S1, S2 still free")
         # ---- GOTO_POINT with software E-stop and resume ----
