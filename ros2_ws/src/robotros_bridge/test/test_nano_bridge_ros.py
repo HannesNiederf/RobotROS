@@ -129,10 +129,15 @@ def test_bridge_against_fake_nanos(system) -> None:  # noqa: ANN001
     pub = probe.create_publisher(Twist, "cmd_vel", 10)
     cmd = Twist()
     cmd.linear.x = 0.2  # above the D-24 limit: the bridge must cap it at 0.05 m/s
-    end = time.monotonic() + 2.0
-    while time.monotonic() < end:
+    # At least 2 s of commands, longer (up to 6 s) until 0.04 m are covered: on a loaded CI runner the robot covered
+    # only 0.033 m in 2 s once (26.11.2026). The speed checks below stay strict.
+    start = time.monotonic()
+    while time.monotonic() - start < 6.0:
         pub.publish(cmd)
         time.sleep(0.05)
+        moved = seen["odom"] and seen["odom"][-1].pose.pose.position.x > 0.04
+        if time.monotonic() - start >= 2.0 and moved:
+            break
     last = seen["odom"][-1]
     assert last.pose.pose.position.x > 0.04
     recent = [m.twist.twist.linear.x for m in seen["odom"][-25:]]
