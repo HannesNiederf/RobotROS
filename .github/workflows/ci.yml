@@ -67,6 +67,8 @@ jobs:
       - name: Install dependencies
         timeout-minutes: 20
         run: |
+          # Retries and a short timeout per request: a slow mirror hung the job on 26.11.2026.
+          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-ci
           apt-get update
           apt-get install -y ros-dev-tools
           rosdep update --rosdistro jazzy
@@ -99,6 +101,8 @@ jobs:
       - name: Install dependencies
         timeout-minutes: 20
         run: |
+          # Retries and a short timeout per request: a slow mirror hung the job on 26.11.2026.
+          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-ci
           apt-get update
           apt-get install -y ros-dev-tools libegl1 libgl1-mesa-dri mesa-utils xvfb xauth python3-pip
           rosdep update --rosdistro jazzy

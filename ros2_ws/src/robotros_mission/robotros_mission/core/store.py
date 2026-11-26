@@ -72,7 +72,8 @@ class Store:
         if path != ":memory:":
             Path(path).expanduser().parent.mkdir(parents=True, exist_ok=True)
             path = str(Path(path).expanduser())
-        self.db = sqlite3.connect(path, isolation_level=None)
+        # The node uses the store from several executor threads, always under its own lock.
+        self.db = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
         if path != ":memory:":

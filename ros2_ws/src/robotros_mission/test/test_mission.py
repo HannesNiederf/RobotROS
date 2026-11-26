@@ -340,3 +340,23 @@ def test_set_priority_and_station_helpers() -> None:
     m.store.delete_station(ids["A"])
     assert m.store.station(ids["A"]) is None
     assert m.store.db.execute("SELECT state FROM carts WHERE name='cart1'").fetchone()[0] == "UNKNOWN"
+
+
+def test_store_usable_from_another_thread(tmp_path: Path) -> None:
+    # mission_manager runs a MultiThreadedExecutor; the store is created in the main thread.
+    import threading
+
+    store = Store(str(tmp_path / "t.db"))
+    errors: list[Exception] = []
+
+    def work() -> None:
+        try:
+            store.activate_map("m", "/m.yaml")
+            store.add_order("GOTO_POINT", 5, goal=(1.0, 2.0, 0.0))
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+
+    th = threading.Thread(target=work)
+    th.start()
+    th.join()
+    assert errors == [] and len(store.orders(("QUEUED",))) == 1
