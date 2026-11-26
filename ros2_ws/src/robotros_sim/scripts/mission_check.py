@@ -216,8 +216,11 @@ class MissionCheck(Node):
         self.report(done, f"transport COMPLETED (steps {steps})")
         d = self.dist_to(WORLD_S3[0], WORLD_S3[1])
         self.report(0.30 <= d <= 0.50, f"robot drove out of S3 to P_a ({d:.2f} m from S3)")
-        occ = {s.id: s.cart_name for s in self.stations.stations} if self.stations else {}
-        self.report(occ.get(s1) == "" and occ.get(s3) == "cart@world_S1", f"cart booked at S3 ({occ})")
+        def occ() -> dict:
+            return {s.id: s.cart_name for s in self.stations.stations} if self.stations else {}
+
+        booked = self.spin_until(lambda: occ().get(s1) == "" and occ().get(s3) == "cart@world_S1", 5.0)
+        self.report(booked, f"cart booked at S3 ({occ()})")
         return done
 
 
