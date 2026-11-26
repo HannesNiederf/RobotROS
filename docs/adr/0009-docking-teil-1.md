@@ -23,9 +23,11 @@ Status: angenommen (Claude, 26.11.2026)
 - **`reverse_k_y` = 8,0 statt Startwert 1,5** (ÄM-01 §5, Quelle „K, C15“): Mit 1,5 baut der Regler 4 cm
   Seitenversatz erst nach etwa 1,3 m ab (Kennlänge `k_θ/k_y`), die Einfahrt ist aber nur 0,70 m lang. Mit 8,0 sind
   es etwa 0,25 m. Festzulegen in Kalibrierung C15.
-- **`slot_margin_m` = 0 statt Startwert 0,04 m:** Platz S3 der Simulationswelt liegt 0,25 m vor der Wand; mit
-  0,24 m halber Platzgröße und einigen Zentimetern Posenfehler zählte die Wand als „belegt“ (E302). Mit 0,20 m
-  liegen die Wagenfüße (±0,19 m) noch im Platz. Am echten Aufbau prüfen.
+- **Zwei Platzgrößen für den Slot-Check:** Beim Abholen Wagenquadrat + `slot_margin_m` (0,04 m, Spezifikation),
+  beim Abstellen nur das Wagenquadrat (`release_slot_margin_m` = 0, hier festgelegt). Grund: Platz S3 der
+  Simulationswelt liegt 0,25 m vor der Wand; mit 0,24 m halber Platzgröße und einigen Zentimetern Posenfehler zählte
+  die Wand als „belegt“ (E302). Mit 0,20 m beim Abholen fand der Check die Wagenfüße (±0,19 m) nicht mehr sicher
+  (E301). Am echten Aufbau prüfen.
 - **Blockiererkennung über die Geschwindigkeit aus `/odom`** (`stall_speed` 0,005 m/s) statt `stall_tps`
   (5 Ticks/s ≈ 0,002 m/s mit den Platzhaltern). Am echten Roboter prüfen.
 - Drehrichtung beim Wenden immer gegen den Uhrzeigersinn; die Seitenwahl nach Kosten der lokalen Costmap fehlt.
