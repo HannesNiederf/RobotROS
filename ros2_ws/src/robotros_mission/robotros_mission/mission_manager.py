@@ -337,8 +337,11 @@ class MissionManager(Node):
                 msg = OperatorAlert(id=c.id, severity=c.severity, code=c.code, detail=c.detail,
                                     needs_action=c.needs_action, options=c.options)
                 self.pub_alerts.publish(msg)
-                log = self.get_logger().warning if c.severity != "ERROR" else self.get_logger().error
-                log(f"alert {c.code}: {c.detail}")
+                # rclpy refuses one call site with changing severities ("Logger severity cannot be changed").
+                if c.severity == "ERROR":
+                    self.get_logger().error(f"alert {c.code}: {c.detail}")
+                else:
+                    self.get_logger().warning(f"alert {c.code}: {c.detail}")
 
     def send_nav(self, c: Navigate) -> None:
         goal = NavigateToPose.Goal()
