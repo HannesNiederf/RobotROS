@@ -44,12 +44,14 @@ ros2_ws/src/   ROS packages (spec section 3.2). Implemented so far: robotros_int
                robotros_description (xacro, geometry from robot.yaml), robotros_sim (Gazebo world, launch, smoke check,
                sim_hw_adapter = simulated Nanos: robotros_sim/hw_model.py reuses fake_nano, gates /cmd_vel -> /sim/cmd_vel),
                robotros_obstacles (scan_masker), robotros_bringup/launch/navigation.launch.py (mode mapping|nav),
-               robotros_mission (so far only activity_narrator + activity_view: "now / plan" text, ADR 0004),
+               robotros_mission (activity_narrator + activity_view: "now / plan" text, ADR 0004),
                robotros_map (map_manager first part: /web/map_image, /web/map_meta, /robot_pose, /map/get_snapshot),
-               robotros_web (web_server :8080 + rosbridge :9090, installs web_ui/; ADR 0005)
+               robotros_web (web_server :8080 + rosbridge :9090, installs web_ui/; ADR 0005),
+               robotros_mission/mission_manager (orders, stations, SQLite, software E-stop; ADR 0007),
+               robotros_docking (docking_server: EngageCart/ReleaseCart; ADR 0009)
 firmware/      Nano firmware: lib/core (protocol, safety; C++11, host-tested), PlatformIO project not yet
-web_ui/        Browser UI (vanilla JS ES modules, no build step, vendor/roslib.min.js 1.4.1): header + map page so far
-               (ADR 0005); i18n/{en,de,it}.json checked by tools/check_i18n.py; JS unit tests in web_ui/test
+web_ui/        Browser UI (vanilla JS ES modules, no build step, vendor/roslib.min.js 1.4.1): header with STOP button,
+               map / orders / stations pages (ADR 0005, 0008); i18n/{en,de,it}.json checked by tools/check_i18n.py; JS unit tests in web_ui/test
 deploy/        systemd, udev, sudoers, chrony, cyclonedds.xml - not started
 tools/         helper scripts and their tests
 docs/          documentation
@@ -61,7 +63,7 @@ source /opt/ros/jazzy/setup.bash
 cd ros2_ws && colcon build && colcon test && colcon test-result --verbose
 cd .. && tools/smoke_interfaces.sh           # after the build
 python3 tools/check_interfaces.py ros2_ws/src  # interface syntax check, needs no ROS
-python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test ros2_ws/src/robotros_mission/test ros2_ws/src/robotros_map/test -q  # need no ROS
+python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test ros2_ws/src/robotros_mission/test ros2_ws/src/robotros_map/test ros2_ws/src/robotros_docking/test -q  # need no ROS
 ruff check .                                   # Python lint (config: ruff.toml)
 python3 tools/check_i18n.py                    # every en.json key in de/it, placeholders kept
 node --test web_ui/test/*.test.mjs             # web UI pure helpers (map transform, i18n)

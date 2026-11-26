@@ -28,7 +28,7 @@ jobs:
       - name: Tool and core logic tests
         run: |
           python3 -m pip install --break-system-packages pytest ruff pyyaml numpy
-          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test ros2_ws/src/robotros_mission/test ros2_ws/src/robotros_map/test -q
+          python3 -m pytest tools/tests ros2_ws/src/robotros_bridge/test ros2_ws/src/robotros_sim/test ros2_ws/src/robotros_obstacles/test ros2_ws/src/robotros_mission/test ros2_ws/src/robotros_map/test ros2_ws/src/robotros_docking/test -q
       - name: Ruff
         run: ruff check .
       - name: i18n files (web_ui/i18n)
