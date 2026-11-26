@@ -294,7 +294,13 @@ class MissionManager(Node):
         with self.lock:
             self.mission.localized = (self.last_pose_time is not None
                                       and self.now() - self.last_pose_time < self.localized_timeout)
-            self.execute(self.mission.tick(self.now()))
+            # A command can finish at once (e.g. no action server): tick again so that its result, the alert
+            # and the new state go out in this cycle and not 1/tick_hz later.
+            for _ in range(3):
+                commands = self.mission.tick(self.now())
+                if not commands:
+                    break
+                self.execute(commands)
             self.after_change()
 
     def after_change(self) -> None:
