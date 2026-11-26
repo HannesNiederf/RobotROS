@@ -67,7 +67,10 @@ jobs:
       - name: Install dependencies
         timeout-minutes: 20
         run: |
-          # Retries and a short timeout per request: a slow mirror hung the job on 26.11.2026.
+          # Retries and a short timeout per request: a slow mirror hung the job on 26.11.2026, and
+          # security.ubuntu.com answered 404 for packages in its own index. The Azure mirror next to the runners
+          # carries the same pockets.
+          sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g; s|http://security.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
           printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-ci
           apt-get update
           apt-get install -y ros-dev-tools
@@ -101,7 +104,10 @@ jobs:
       - name: Install dependencies
         timeout-minutes: 20
         run: |
-          # Retries and a short timeout per request: a slow mirror hung the job on 26.11.2026.
+          # Retries and a short timeout per request: a slow mirror hung the job on 26.11.2026, and
+          # security.ubuntu.com answered 404 for packages in its own index. The Azure mirror next to the runners
+          # carries the same pockets.
+          sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g; s|http://security.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
           printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-ci
           apt-get update
           apt-get install -y ros-dev-tools libegl1 libgl1-mesa-dri mesa-utils xvfb xauth python3-pip
