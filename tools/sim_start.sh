@@ -265,9 +265,13 @@ if [ "$CHECK" = true ]; then
   if [ "$rc" -ne 0 ]; then
     echo "---- $LOG: errors and warnings (first 60) ----"
     grep -aiE "error|fail|exception|died" "$LOG" | head -n 60 || true
+    echo "---- docking_server phases ----"
+    grep -a "\[docking_server\]" "$LOG" | tail -n 40 || true
     if [ -n "$PI_PID" ]; then
       echo "---- $PI_LOG: errors and warnings (first 60) ----"
       grep -aiE "error|fail|exception|died" "$PI_LOG" | head -n 60 || true
+      echo "---- docking_server phases (Pi part) ----"
+      grep -a "\[docking_server\]" "$PI_LOG" | tail -n 40 || true
     fi
   fi
   exit "$rc"
