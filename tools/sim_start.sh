@@ -235,6 +235,8 @@ if [ "$CHECK" = true ]; then
   if [ "$MODE" = nav ]; then
     # Orders, stations, software E-stop (mission_manager part 1, ADR 0007).
     python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/mission_check.py" || rc=1
+    echo "---- docking_server phases ----"
+    grep -ah "\[docking_server\]" "$LOG" ${PI_LOG:+"$PI_LOG"} 2> /dev/null | tail -n 30 || true
   fi
   echo "---- activity_view now (German) ----"
   tr '\r' '\n' < "$VIEW_LOG.now" | grep -a . | tail -n 25 || true
@@ -265,9 +267,13 @@ if [ "$CHECK" = true ]; then
   if [ "$rc" -ne 0 ]; then
     echo "---- $LOG: errors and warnings (first 60) ----"
     grep -aiE "error|fail|exception|died" "$LOG" | head -n 60 || true
+    echo "---- docking_server phases ----"
+    grep -a "\[docking_server\]" "$LOG" | tail -n 40 || true
     if [ -n "$PI_PID" ]; then
       echo "---- $PI_LOG: errors and warnings (first 60) ----"
       grep -aiE "error|fail|exception|died" "$PI_LOG" | head -n 60 || true
+      echo "---- docking_server phases (Pi part) ----"
+      grep -a "\[docking_server\]" "$PI_LOG" | tail -n 40 || true
     fi
   fi
   exit "$rc"
