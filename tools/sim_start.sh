@@ -10,6 +10,8 @@
 #   tools/sim_start.sh plan                           what the robot intends (another terminal)
 #   tools/sim_start.sh rtf [SECONDS]                  real time factor of the running simulation (another terminal)
 #   tools/sim_start.sh rates [SECONDS]                messages per second and KiB/s of every topic (another terminal)
+#   tools/sim_start.sh rotation                       turns the simulated robot on the spot and measures odometry,
+#                                                      scan time stamp and AMCL against the ground truth (nav, 2nd term.)
 #                                                      language from $LANG (de/it/en), or add --lang de|en|it
 #   --check            test mode (CI): no keyboard, runs sim_start_check.py and exits with its result
 #   --pi[=HOST]        distributed simulation (ADR 0006): Gazebo and RViz here, the robot software
@@ -51,7 +53,7 @@ PI_MARK="$LOG_DIR/.pi_session"
 # Distributed simulation: DDS must reach the Pi over the WLAN (still only domain 77, never the robot's 42).
 if [ -n "$PI" ] && [ "$PI" != local ]; then
   export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
-elif [ -z "$PI" ] && [ -f "$PI_MARK" ] && [[ "$MODE" =~ ^(now|plan|rtf|rates|save)$ ]]; then
+elif [ -z "$PI" ] && [ -f "$PI_MARK" ] && [[ "$MODE" =~ ^(now|plan|rtf|rates|rotation|save)$ ]]; then
   export ROS_AUTOMATIC_DISCOVERY_RANGE="$(cat "$PI_MARK")"
 fi
 # Middleware as on the robot (spec 15.1), on both sides of a --pi session: Ubuntu's ~/.bashrc stops early in
@@ -84,6 +86,9 @@ case "$MODE" in
   rtf)
     exec python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/sim_rtf.py" ${ARG:+"$ARG"}
     ;;
+  rotation)
+    exec python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/rotation_check.py" --omegas 0.3,1.0
+    ;;
   rates)
     exec python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/topic_rates.py" ${ARG:+"$ARG"}
     ;;
@@ -100,7 +105,7 @@ case "$MODE" in
     LAUNCH_ARGS=(mode:=nav "map:=$(realpath "$MAP")")
     ;;
   *)
-    sed -n '2,23p' "$0"
+    sed -n '2,25p' "$0"
     exit 1
     ;;
 esac

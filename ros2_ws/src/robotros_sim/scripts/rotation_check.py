@@ -32,8 +32,8 @@ from robotros_sim.world_map import boxes_from_sdf, rasterize
 from sensor_msgs.msg import LaserScan
 from tf2_ros import Buffer, TransformException, TransformListener
 
-RES = 0.03
-HIT_RADIUS_CELLS = 2  # a scan point within 6 cm of an obstacle counts as a hit
+RES = 0.02
+HIT_RADIUS_CELLS = 1  # a scan point within 2 cm of an obstacle counts as a hit
 
 
 def yaw_of(q) -> float:  # noqa: ANN001
@@ -132,10 +132,12 @@ class RotationCheck(Node):
     def best_delta(self, scan: LaserScan, pose: tuple[float, float, float]) -> tuple[float, float, float]:
         """(delta, score at delta, score at 0)."""
         x, y, yaw = pose
-        deltas = np.arange(-0.25, 0.2501, 0.005)
-        scores = [self.score(scan, x, y, yaw + d) for d in deltas]
-        i = int(np.argmax(scores))
-        return float(deltas[i]), scores[i], self.score(scan, x, y, yaw)
+        deltas = np.arange(-0.25, 0.2501, 0.0025)
+        scores = np.array([self.score(scan, x, y, yaw + d) for d in deltas])
+        best = float(scores.max())
+        # middle of the plateau of (nearly) best scores, not its first point
+        d = float(np.mean(deltas[scores >= best - 0.002]))
+        return d, best, self.score(scan, x, y, yaw)
 
     def map_yaw(self) -> float | None:
         try:
