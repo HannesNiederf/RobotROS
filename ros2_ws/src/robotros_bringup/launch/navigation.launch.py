@@ -1,7 +1,8 @@
 """Mapping or navigation stack of robotROS (softwarespezifikation.md sections 3.3, 7.1, 7.2).
 
 Arguments:
-  mode          (both: activity_narrator, ADR 0004; map_manager, ADR 0005; mission_manager, ADR 0007)
+  mode          (both: activity_narrator, ADR 0004; map_manager, ADR 0005; mission_manager, ADR 0007;
+                 docking_server, ADR 0009)
                 mapping: scan_masker, slam_toolbox (online_async), twist_mux A/B, collision_monitor
                 nav:     scan_masker, map_server, amcl, Nav2 (planner, controller, behaviors, bt_navigator,
                          velocity_smoother), twist_mux A/B, collision_monitor
@@ -60,6 +61,9 @@ def _setup(context: LaunchContext) -> list:
         # Orders, stations, software E-stop; the only writer of the database (mission_manager part 1, ADR 0007).
         Node(package="robotros_mission", executable="mission_manager", name="mission_manager",
              parameters=[os.path.join(cfg, "mission.yaml"), mission, t], output="screen"),
+        # EngageCart / ReleaseCart on /cmd_vel_docking (docking part 1, ADR 0009).
+        Node(package="robotros_docking", executable="docking_server", name="docking_server",
+             parameters=[os.path.join(cfg, "docking.yaml"), t], output="screen"),
         Node(
             package="twist_mux",
             executable="twist_mux",

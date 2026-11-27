@@ -3,8 +3,10 @@
 
 Stations: two storage places are taught over /map/upsert_station and appear on /web/stations.
 Order checks: E303, E301, a valid TRANSPORT, E301 again for the reserved source.
-TRANSPORT: the robot drives to the pre-check point of the source, then cart handling (not implemented yet) makes
-the order DEFERRED with E305; the cart stays at the source.
+TRANSPORT to a taught place without a real cart: the robot drives to the pre-check point, the slot check of the
+docking server sees no cart and the order is DEFERRED with E301 (ADR 0009).
+Real TRANSPORT from S1 (cart C1 in the world) to the free place S3: turn, reverse under the cart, lift, drive to S3,
+reverse in, lower, drive out; the order completes and the cart is booked at S3. (The Gazebo cart does not move yet.)
 GOTO_POINT: a software E-stop while driving pauses the order (safety not ARMED), /mission/ack_safety RESUME arms
 the robot again and the order completes. A queued order can be cancelled.
 Exit code 0 = pass. The wall clock only bounds the waiting.
@@ -30,6 +32,9 @@ from std_srvs.srv import Trigger
 S1 = (0.0, -1.5, 0.0)    # P_pre (0.7, -1.5)
 S2 = (-3.0, 0.0, 0.0)    # P_pre (-2.3, 0.0)
 POINT = (-1.0, 0.0, 0.0)
+# Places of the world generic.sdf: S1 with cart C1 (feet), S3 free. Front pointing out of the box (ÄM-01 D-33).
+WORLD_S1 = (-3.25, 0.0, 0.0)
+WORLD_S3 = (3.0, -3.25, math.pi / 2)
 
 
 class MissionCheck(Node):
@@ -133,13 +138,13 @@ class MissionCheck(Node):
         self.report(pickup, "mission drives to the pickup station (GOTO_PICKUP)")
         deferred = self.spin_until(lambda: self.order_state(tid) == "DEFERRED", 180.0)
         o = self.order(tid)
-        self.report(deferred and o is not None and o.error_code == "E305",
-                    f"without cart handling the order is DEFERRED with E305 ({o.state if o else '-'} "
+        self.report(deferred and o is not None and o.error_code == "E301",
+                    f"slot check sees no cart: order DEFERRED with E301 ({o.state if o else '-'} "
                     f"{o.error_code if o else ''})")
         d = self.dist_to(S1[0] + 0.7, S1[1])
         self.report(d < 0.35, f"robot stopped at the pre-check point of S1 ({d:.2f} m away)")
-        self.report(self.spin_until(lambda: any(a.code == "E305" for a in self.alerts), 5.0),
-                    "alert E305 on /mission/alerts")
+        self.report(self.spin_until(lambda: any(a.code == "E301" for a in self.alerts), 5.0),
+                    "alert E301 on /mission/alerts")
         still = {s.id: s.occupied for s in self.stations.stations} if self.stations else {}
         self.report(still.get(s1) is True and still.get(s2) is False, "cart still at S1, S2 still free")
         # ---- GOTO_POINT with software E-stop and resume ----
@@ -160,6 +165,8 @@ class MissionCheck(Node):
         done = self.spin_until(lambda: self.order_state(gid) == "COMPLETED", 180.0)
         d = self.dist_to(POINT[0], POINT[1])
         self.report(done and d < 0.35, f"GOTO_POINT completed after resuming ({d:.2f} m from the point)")
+        # ---- real transport S1 -> S3 ----
+        self.real_transport()
         # ---- cancel ----
         self.call(Trigger, "/mission/software_estop", Trigger.Request())
         self.spin_until(lambda: self.status is not None and self.status.state == "LOCKED", 10.0)
@@ -171,6 +178,50 @@ class MissionCheck(Node):
                     "a queued order can be cancelled")
         self.call(AckSafety, "/mission/ack_safety", AckSafety.Request(resume_mode="RESUME"))
         return 1 if self.failures else 0
+
+
+    def upsert(self, name: str, pose: tuple, occupied: bool) -> int:
+        st = Station(id=0, name=name, kind="STORAGE", pose=Pose2D(x=pose[0], y=pose[1], theta=pose[2]),
+                     approach_distance=0.40, enabled=True, occupied=occupied, cart_name="")
+        res = self.call(UpsertStation, "/map/upsert_station", UpsertStation.Request(station=st))
+        ok = res is not None and res.success
+        self.report(ok, f"/map/upsert_station {name}")
+        return res.station_id if ok else 0
+
+    def real_transport(self) -> bool:
+        s1, s3 = self.upsert("world_S1", WORLD_S1, True), self.upsert("world_S3", WORLD_S3, False)
+        res = self.create("TRANSPORT", s1, s3)
+        self.report(res.success, f"TRANSPORT world_S1 -> world_S3 accepted (order {res.order_id})")
+        if not res.success:
+            return False
+        oid = res.order_id
+        closest = [math.inf]
+        steps: list[str] = []
+
+        def watch() -> bool:
+            closest[0] = min(closest[0], self.dist_to(WORLD_S1[0], WORLD_S1[1]))
+            if self.status is not None and self.status.active_order_id == oid and (
+                    not steps or steps[-1] != self.status.step):
+                steps.append(self.status.step)
+            return self.order_state(oid) in ("COMPLETED", "DEFERRED", "CANCELLED") or (
+                self.status is not None and self.status.state in ("NEEDS_OPERATOR", "HELD_WITH_CART"))
+
+        self.spin_until(watch, 480.0)
+        o = self.order(oid)
+        print(f"info  transport steps {steps}, closest to S1 {closest[0]:.3f} m, "
+              f"state {o.state if o else '-'} {o.error_code if o else ''} {self.status.state if self.status else ''}",
+              flush=True)
+        self.report(closest[0] <= 0.05, f"robot reversed under the cart to S1 ({closest[0]:.3f} m)")
+        done = o is not None and o.state == "COMPLETED"
+        self.report(done, f"transport COMPLETED (steps {steps})")
+        d = self.dist_to(WORLD_S3[0], WORLD_S3[1])
+        self.report(0.30 <= d <= 0.50, f"robot drove out of S3 to P_a ({d:.2f} m from S3)")
+        def occ() -> dict:
+            return {s.id: s.cart_name for s in self.stations.stations} if self.stations else {}
+
+        booked = self.spin_until(lambda: occ().get(s1) == "" and occ().get(s3) == "cart@world_S1", 5.0)
+        self.report(booked, f"cart booked at S3 ({occ()})")
+        return done
 
 
 def main() -> int:

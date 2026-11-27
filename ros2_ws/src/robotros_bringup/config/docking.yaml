@@ -1,0 +1,34 @@
+# docking_server (robotros_docking, ÄM-01 3.1/3.2 and section 5, ADR 0009).
+# T = to be set by test, E = estimate, chosen here = not in the spec.
+docking_server:
+  ros__parameters:
+    control_hz: 20.0              # /cmd_vel_docking (spec 5.3)
+    turn_distance: 0.70           # m, P_pre in front of S (T)
+    reverse_fast_speed: 0.10      # m/s, section R1 (E)
+    reverse_slow_speed: 0.05      # m/s, section R2 (E)
+    exit_fwd_speed: 0.08          # m/s (E)
+    turn_speed: 0.30              # rad/s without cart (E)
+    turn_speed_cart: 0.25         # rad/s with cart (E)
+    turn_tolerance: 0.05          # rad, end of TURN_AROUND (3.1 step 3)
+    engage_stop_tol: 0.01         # m (T)
+    engage_hard_limit_extra: 0.03 # m (T)
+    stall_speed: 0.005            # m/s; spec stall_tps 5 ticks/s = 0.0018 m/s with 576 ticks, 0.0325 m radius;
+                                  # the simulated odometry noise needs a higher threshold (chosen here)
+    stall_time_s: 0.5             # s (T)
+    stall_ok_distance: 0.04       # m, stall this close to S = end stop (3.1 step 4c)
+    reverse_k_theta: 2.0          # (K, C15)
+    reverse_k_y: 8.0              # (K, C15); spec start value 1.5 corrects too slowly, ADR 0009
+    max_omega_reverse: 0.30       # rad/s (3.1 step 4)
+    hub_timeout_s: 6.0            # s, simulated hub travel 3 s (chosen here until C-measurement)
+    min_turn_omega: 0.08          # rad/s, smallest turn rate near the target heading (chosen here)
+    slot_margin_m: 0.04           # m (T), slot = cart square + margin when picking up (cart present?)
+    release_slot_margin_m: 0.0    # m, chosen here: with 0.04 a wall 0.25 m behind S counted as occupied, ADR 0009
+    release_slot_back_trim_m: 0.06  # m, chosen here: back edge of the free check moved 6 cm towards S (wall behind
+                                    # the place + pose error; the front feet of a cart stay inside), ADR 0009
+    cart_half_size_m: 0.20        # m, cart 0.40 m outside (round 26 placeholder)
+    slot_free_max_points: 3       # (T)
+    cart_present_min_points: 8    # (T)
+    cart_check_enabled: true      # true with SECTOR (D-37)
+    range_max: 8.0                # m, as scan_masker
+    hub_pwm: 255
+    pose_max_age_s: 1.0           # s, older map pose = odometry only (chosen here)

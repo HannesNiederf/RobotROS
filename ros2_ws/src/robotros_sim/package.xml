@@ -17,6 +17,7 @@
   <exec_depend>robotros_bringup</exec_depend>
   <exec_depend>robotros_obstacles</exec_depend>
   <exec_depend>robotros_mission</exec_depend>
+  <exec_depend>robotros_docking</exec_depend>
   <exec_depend>robotros_map</exec_depend>
   <exec_depend>robotros_web</exec_depend>
   <exec_depend>nav2_msgs</exec_depend>

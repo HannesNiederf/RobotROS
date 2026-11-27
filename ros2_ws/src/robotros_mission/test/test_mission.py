@@ -360,3 +360,13 @@ def test_store_usable_from_another_thread(tmp_path: Path) -> None:
     th.start()
     th.join()
     assert errors == [] and len(store.orders(("QUEUED",))) == 1
+
+
+def test_slot_check_codes_do_not_need_the_operator() -> None:
+    m, ids = make()
+    oid = m.create_order("TRANSPORT", 5, ids["A"], ids["B"])[1]
+    m.nav_result(cmds(m, 0.0, Navigate)[0].seq, Result(True))
+    m.docking_result(cmds(m, 1.0, Engage)[0].seq, Result(False, "E301", "no cart seen"))
+    cmds(m)
+    o = m.store.order(oid)
+    assert o.state == "DEFERRED" and o.error_code == "E301" and m.state == "IDLE"

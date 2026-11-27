@@ -7,9 +7,10 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from robotros_interfaces.msg import HubState
 from sensor_msgs.msg import LaserScan
+from std_msgs.msg import Bool
 
 from .core.scan_mask import MaskConfig, mask_scan
 
@@ -28,13 +29,25 @@ class ScanMasker(Node):
         self.cfg = MaskConfig.from_yaml(
             _load(self.get_parameter("robot_yaml").value), _load(self.get_parameter("obstacles_yaml").value)
         )
+        self.hub_top = False
+        self.mask_request = False
         self.cart_mask = False
         self.pub = self.create_publisher(LaserScan, "scan_filtered", qos_profile_sensor_data)
         self.create_subscription(LaserScan, "scan", self.on_scan, qos_profile_sensor_data)
         self.create_subscription(HubState, "hw/hub_state", self.on_hub, 10)
+        # D-30: the docking server switches the mask from the start of the reverse drive into the box until the
+        # forward exit after setting the cart down. The hub at the top keeps it on as well (cart lifted).
+        latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                             durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.create_subscription(Bool, "mission/scan_mask", self.on_mask_request, latched)
 
     def on_hub(self, msg: HubState) -> None:
-        self.cart_mask = bool(msg.limit_top) or msg.state == HubState.TOP
+        self.hub_top = bool(msg.limit_top) or msg.state == HubState.TOP
+        self.cart_mask = self.hub_top or self.mask_request
+
+    def on_mask_request(self, msg: Bool) -> None:
+        self.mask_request = bool(msg.data)
+        self.cart_mask = self.hub_top or self.mask_request
 
     def on_scan(self, msg: LaserScan) -> None:
         out = LaserScan()

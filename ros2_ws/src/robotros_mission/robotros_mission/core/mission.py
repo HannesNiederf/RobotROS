@@ -342,6 +342,8 @@ class Mission:
             self._advance(self.store.order(order.id) or order)
             return
         code = res.code or ("E305" if step == "ENGAGE" else "E306")
+        if code in ("E301", "E302"):
+            started = False  # slot check at P_pre (D-37): refused before anything moved
         if not started and step == "ENGAGE":
             self._fail(order, code, res.detail or "cart handling is not available")
         elif not started:
