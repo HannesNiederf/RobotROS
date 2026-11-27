@@ -142,7 +142,10 @@ def test_bridge_against_fake_nanos(system) -> None:  # noqa: ANN001
     assert last.pose.pose.position.x > 0.04
     recent = [m.twist.twist.linear.x for m in seen["odom"][-25:]]
     mean = sum(recent) / len(recent)
-    assert 0.03 < mean <= 0.052, recent  # D-24 cap 0.05 m/s; one tick/s is about 0.00035 m/s
+    # Safety states seen so far: a watchdog trip on a loaded runner shows up here (27.11.2026: robot stopped).
+    states = [m.state for m in seen["safety"]]
+    changes = [s for i, s in enumerate(states) if i == 0 or s != states[i - 1]]
+    assert 0.03 < mean <= 0.052, (recent, "safety states", changes)  # D-24 cap 0.05 m/s
     assert max(recent) <= 0.052, recent
 
     # cmd_vel timeout 0.5 s -> zero setpoints; then the wheel lag and the measured-rate window. A fixed 1 s wait
