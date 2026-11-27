@@ -233,7 +233,8 @@ class MissionCheck(Node):
 
 def main() -> int:
     # --skip-transport: used for the split run (--pi=local). There Nav2 found no path after picking up the cart in
-    # 3 of about 8 runs on 27.11.2026 (planner "no valid path" from P_a of S1 to a free place nearby); open point,
+    # 5 of 7 split runs on 27.11.2026 (planner "no valid path" from P_a of S1 to a free place nearby; the
+    # single-host runs passed); open point,
     # see the project index. The single-host run keeps the full transport.
     skip = "--skip-transport" in sys.argv[1:]
     rclpy.init()
