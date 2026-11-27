@@ -20,6 +20,7 @@ jobs:
   # Fast checks that need no ROS installation.
   checks:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60  # a hanging apt mirror once blocked a job for over 45 min (26.11.2026)
     steps:
       - uses: actions/checkout@v4
       - name: Interface file syntax check
@@ -42,6 +43,7 @@ jobs:
   # Firmware core on the host (C++, spez_firmware_protokoll.md 11.1), with sanitizers.
   firmware-host:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60  # a hanging apt mirror once blocked a job for over 45 min (26.11.2026)
     steps:
       - uses: actions/checkout@v4
       - name: clang-format
@@ -55,6 +57,7 @@ jobs:
   # Authoritative build and test on ROS 2 Jazzy (softwarespezifikation.md section 16).
   ros:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60  # a hanging apt mirror once blocked a job for over 45 min (26.11.2026)
     container: ros:jazzy
     defaults:
       run:
@@ -62,7 +65,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
+        timeout-minutes: 20
         run: |
+          # Retries and a short timeout per request: a slow mirror hung the job on 26.11.2026, and
+          # security.ubuntu.com answered 404 for packages in its own index. The Azure mirror next to the runners
+          # carries the same pockets.
+          sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g; s|http://security.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
+          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-ci
           apt-get update
           apt-get install -y ros-dev-tools
           rosdep update --rosdistro jazzy
@@ -85,6 +94,7 @@ jobs:
   # check /scan, /odom, TF, and drive. Software rendering (Mesa) because CI has no GPU.
   sim:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60  # a hanging apt mirror once blocked a job for over 45 min (26.11.2026)
     container: ros:jazzy
     defaults:
       run:
@@ -92,7 +102,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
+        timeout-minutes: 20
         run: |
+          # Retries and a short timeout per request: a slow mirror hung the job on 26.11.2026, and
+          # security.ubuntu.com answered 404 for packages in its own index. The Azure mirror next to the runners
+          # carries the same pockets.
+          sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g; s|http://security.ubuntu.com|http://azure.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
+          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80-ci
           apt-get update
           apt-get install -y ros-dev-tools libegl1 libgl1-mesa-dri mesa-utils xvfb xauth python3-pip
           rosdep update --rosdistro jazzy

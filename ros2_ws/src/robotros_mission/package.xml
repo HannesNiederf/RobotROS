@@ -3,7 +3,7 @@
 <package format="3">
   <name>robotros_mission</name>
   <version>0.1.0</version>
-  <description>Mission layer of robotROS (softwarespezifikation.md section 9). So far: activity_narrator and activity_view, the plain-language "now / plan" display (ADR 0004).</description>
+  <description>Mission layer of robotROS (softwarespezifikation.md section 9). So far: mission_manager part 1 with orders, stations and software E-stop (ADR 0007); activity_narrator and activity_view, the plain-language "now / plan" display (ADR 0004).</description>
   <!-- TODO: set the real maintainer name and e-mail address. -->
   <maintainer email="todo@example.invalid">RobotROS team</maintainer>
   <!-- TODO: the project license is not decided yet. -->
@@ -14,6 +14,8 @@
   <exec_depend>action_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>nav2_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
   <exec_depend>robotros_interfaces</exec_depend>
   <exec_depend>robotros_bringup</exec_depend>
   <exec_depend>python3-yaml</exec_depend>

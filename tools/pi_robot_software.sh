@@ -29,6 +29,7 @@ source "$ROOT/ros2_ws/install/setup.bash" || { echo "not built: cd $ROOT/ros2_ws
 
 ARGS=(mode:="$MODE" auto:=true web:=true)
 [ "$MODE" = nav ] && ARGS+=("map:=$MAP")
+[ -n "${SIM_DB:-}" ] && ARGS+=("db:=$SIM_DB")  # fresh mission database of a --check run (ADR 0007)
 echo "robot software ($MODE) on $(hostname), domain $ROS_DOMAIN_ID, discovery $ROS_AUTOMATIC_DISCOVERY_RANGE," \
   "middleware $RMW_IMPLEMENTATION"
 # WLAN power saving delays incoming packets by up to a beacon interval (assumption to be checked on the Pi).
