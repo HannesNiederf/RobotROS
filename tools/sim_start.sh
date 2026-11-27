@@ -234,7 +234,7 @@ if [ "$CHECK" = true ]; then
   fi
   if [ "$MODE" = nav ]; then
     # Orders, stations, software E-stop (mission_manager part 1, ADR 0007).
-    python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/mission_check.py" ${PI:+--skip-transport} || rc=1
+    python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/mission_check.py" || rc=1
     echo "---- docking_server phases ----"
     grep -ah "\[docking_server\]" "$LOG" ${PI_LOG:+"$PI_LOG"} 2> /dev/null | tail -n 30 || true
   fi
