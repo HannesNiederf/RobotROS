@@ -131,6 +131,8 @@ do_fw() {
 }
 do_sim() ( ros_env && tools/sim_smoke.sh "$OUT/sim" )
 do_nav() ( ros_env && tools/sim_nav.sh "$OUT/nav" )
+# Split robot software (ADR 0006) on this computer with the map of sim_nav; prints topic rates (RATE lines).
+do_pi_local() ( ros_env && tools/sim_start.sh nav "$OUT/nav/generic_map.yaml" --check --pi=local )
 
 # ---- steps ----------------------------------------------------------------------------------
 step environment do_env
@@ -152,6 +154,7 @@ if have cmake && have g++; then step firmware_host do_fw; else skip firmware_hos
 if ! grep -q "^FAIL|colcon_build" "$SUMMARY"; then
   step sim_smoke do_sim
   step sim_nav do_nav
+  if grep -q "^PASS|sim_nav" "$SUMMARY"; then step sim_pi_local do_pi_local; else skip sim_pi_local "sim_nav failed"; fi
 fi
 
 # ---- report ---------------------------------------------------------------------------------
@@ -172,7 +175,16 @@ fi
   cat "$OUT/environment.log"
   echo '```'
   echo "</details>"
-  for key in colcon_test sim_smoke sim_nav; do
+  if [ -f "$OUT/sim_pi_local.log" ]; then
+    echo
+    echo "<details><summary>sim_pi_local: middleware and topic rates</summary>"
+    echo
+    echo '```'
+    grep -aE "^(RATE|robot software|Pi load)" "$OUT/sim_pi_local.log" | head -n 40
+    echo '```'
+    echo "</details>"
+  fi
+  for key in colcon_test sim_smoke sim_nav sim_pi_local; do
     if [ -f "$OUT/$key.log" ] && ! grep -q "^FAIL|$key" "$SUMMARY"; then
       echo
       echo "<details><summary>$key (last 25 lines)</summary>"

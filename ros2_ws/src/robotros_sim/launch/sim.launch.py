@@ -31,7 +31,8 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description() -> LaunchDescription:
     sim_share = FindPackageShare("robotros_sim")
     sim_hw_yaml = Path(get_package_share_directory("robotros_sim")) / "config" / "sim_hw.yaml"
-    gz_track_scale = float(yaml.safe_load(sim_hw_yaml.read_text(encoding="utf-8"))["gazebo_track_scale"])
+    sim_hw = yaml.safe_load(sim_hw_yaml.read_text(encoding="utf-8"))
+    gz_track_scale = float(sim_hw["gazebo_track_scale"])
     world = LaunchConfiguration("world")
     headless = LaunchConfiguration("headless")
     world_file = PathJoinSubstitution([sim_share, "worlds", PythonExpression(["'", world, "' + '.sdf'"])])
@@ -77,6 +78,14 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
     )
 
+    # /sim/clock (every Gazebo clock message) -> /clock at clock_relay_hz per simulated second (ADR 0006).
+    clock_relay = Node(
+        package="robotros_sim",
+        executable="clock_relay.py",
+        parameters=[{"rate_hz": float(sim_hw["clock_relay_hz"])}],
+        output="log",
+    )
+
     # Robot software (sim_hw_adapter, navigation, sim_helper, web UI): robot_software.launch.py (ADR 0006).
     robot_software = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(PathJoinSubstitution([sim_share, "launch", "robot_software.launch.py"])),
@@ -117,6 +126,7 @@ def generate_launch_description() -> LaunchDescription:
             description,
             spawn,
             bridge,
+            clock_relay,
             robot_software,
             rviz,
         ]

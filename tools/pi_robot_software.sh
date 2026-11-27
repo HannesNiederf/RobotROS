@@ -15,6 +15,9 @@ case "$MODE" in mapping|nav) ;; *) echo "usage: $0 mapping|nav [MAP.yaml]" >&2; 
 
 export ROS_DOMAIN_ID="${SIM_DOMAIN_ID:-77}"
 export ROS_AUTOMATIC_DISCOVERY_RANGE="${PI_DISCOVERY:-SUBNET}"
+# Same middleware and WLAN settings as tools/sim_start.sh (ADR 0006); ~/.bashrc is not read over SSH.
+export RMW_IMPLEMENTATION="${SIM_RMW:-rmw_cyclonedds_cpp}"
+export CYCLONEDDS_URI="file://$ROOT/ros2_ws/src/robotros_sim/config/cyclonedds_wifi.xml"
 if [ "$ROS_DOMAIN_ID" = "42" ]; then
   echo "refusing to run on ROS_DOMAIN_ID 42 (the robot's domain)" >&2
   exit 2
@@ -26,7 +29,16 @@ source "$ROOT/ros2_ws/install/setup.bash" || { echo "not built: cd $ROOT/ros2_ws
 
 ARGS=(mode:="$MODE" auto:=true web:=true)
 [ "$MODE" = nav ] && ARGS+=("map:=$MAP")
-echo "robot software ($MODE) on $(hostname), domain $ROS_DOMAIN_ID, discovery $ROS_AUTOMATIC_DISCOVERY_RANGE"
+echo "robot software ($MODE) on $(hostname), domain $ROS_DOMAIN_ID, discovery $ROS_AUTOMATIC_DISCOVERY_RANGE," \
+  "middleware $RMW_IMPLEMENTATION"
+# WLAN power saving delays incoming packets by up to a beacon interval (assumption to be checked on the Pi).
+if command -v iw > /dev/null; then
+  for dev in /sys/class/net/*/wireless; do
+    [ -e "$dev" ] || continue
+    dev="$(basename "$(dirname "$dev")")"
+    echo "WLAN $dev: $(iw dev "$dev" get power_save 2>&1 | head -n 1)"
+  done
+fi
 setsid ros2 launch robotros_sim robot_software.launch.py "${ARGS[@]}" &
 LAUNCH=$!
 

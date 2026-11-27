@@ -9,6 +9,7 @@
 #   tools/sim_start.sh now                            what the robot does now, running log (another terminal)
 #   tools/sim_start.sh plan                           what the robot intends (another terminal)
 #   tools/sim_start.sh rtf [SECONDS]                  real time factor of the running simulation (another terminal)
+#   tools/sim_start.sh rates [SECONDS]                messages per second and KiB/s of every topic (another terminal)
 #                                                      language from $LANG (de/it/en), or add --lang de|en|it
 #   --check            test mode (CI): no keyboard, runs sim_start_check.py and exits with its result
 #   --pi[=HOST]        distributed simulation (ADR 0006): Gazebo and RViz here, the robot software
@@ -50,8 +51,15 @@ PI_MARK="$LOG_DIR/.pi_session"
 # Distributed simulation: DDS must reach the Pi over the WLAN (still only domain 77, never the robot's 42).
 if [ -n "$PI" ] && [ "$PI" != local ]; then
   export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
-elif [ -z "$PI" ] && [ -f "$PI_MARK" ] && [[ "$MODE" =~ ^(now|plan|rtf|save)$ ]]; then
+elif [ -z "$PI" ] && [ -f "$PI_MARK" ] && [[ "$MODE" =~ ^(now|plan|rtf|rates|save)$ ]]; then
   export ROS_AUTOMATIC_DISCOVERY_RANGE="$(cat "$PI_MARK")"
+fi
+# Middleware as on the robot (spec 15.1), on both sides of a --pi session: Ubuntu's ~/.bashrc stops early in
+# non-interactive shells, so an SSH command would otherwise run with the default (Fast DDS) and mix vendors.
+export RMW_IMPLEMENTATION="${SIM_RMW:-rmw_cyclonedds_cpp}"
+# Distributed simulation over WLAN: multicast only for discovery, data unicast (ADR 0006).
+if [ -n "$PI" ] || [ "$ROS_AUTOMATIC_DISCOVERY_RANGE" = SUBNET ]; then
+  export CYCLONEDDS_URI="file://$ROOT/ros2_ws/src/robotros_sim/config/cyclonedds_wifi.xml"
 fi
 export GZ_IP=127.0.0.1
 export GZ_PARTITION="robotros_sim_$USER"
@@ -76,6 +84,9 @@ case "$MODE" in
   rtf)
     exec python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/sim_rtf.py" ${ARG:+"$ARG"}
     ;;
+  rates)
+    exec python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/topic_rates.py" ${ARG:+"$ARG"}
+    ;;
   now|plan)
     exec ros2 run robotros_mission activity_view "$MODE" --i18n "$ROOT/web_ui/i18n" "${VIEW_ARGS[@]}"
     ;;
@@ -89,7 +100,7 @@ case "$MODE" in
     LAUNCH_ARGS=(mode:=nav "map:=$(realpath "$MAP")")
     ;;
   *)
-    sed -n '2,17p' "$0"
+    sed -n '2,23p' "$0"
     exit 1
     ;;
 esac
@@ -99,6 +110,7 @@ HEADLESS=true
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/$MODE.log"
 PI_PID=""
+PING_PID=""
 WEB_URL="http://localhost:8080"
 if [ -n "$PI" ]; then
   PI_LOG="$LOG_DIR/$MODE.pi.log"
@@ -123,6 +135,10 @@ if [ -n "$PI" ]; then
       REMOTE_MAP="robotros_sim_maps/$(basename "$MAP_ABS")"
     fi
     WEB_URL="http://${PI#*@}:8080"
+    # Round trip time to the Pi during the whole session, summarized at the end (network_summary).
+    PING_LOG="$LOG_DIR/$MODE.ping"
+    ping -i 1 "${PI#*@}" > "$PING_LOG" 2>&1 &
+    PING_PID=$!
     echo "Robot software runs on $PI. Its output: $PI_LOG"
     # -tt: closing the connection (Ctrl+C here) hangs up the remote side, which then stops cleanly.
     ssh -tt "$PI" "cd RobotROS && tools/pi_robot_software.sh $MODE ${REMOTE_MAP:+\$HOME/$REMOTE_MAP}" \
@@ -141,6 +157,7 @@ LAUNCH_PID=$!
 
 pi_load_summary() {
   [ -n "$PI_PID" ] && [ -f "$PI_LOG" ] || return 0
+  grep -aE "^(robot software|WLAN) " "$PI_LOG" | tr -d '\r'
   python3 - "$PI_LOG" <<'PY'
 import re, sys
 vals = [(int(b), int(m)) for b, m in re.findall(r"PILOAD cpu_busy=(\d+)% mem_used=(\d+)MiB", open(sys.argv[1], errors="replace").read())]
@@ -153,9 +170,18 @@ else:
 PY
 }
 
+network_summary() {
+  [ -n "$PING_PID" ] || return 0
+  kill -INT "$PING_PID" 2> /dev/null || true
+  wait "$PING_PID" 2> /dev/null || true
+  echo "Network to the Pi (ping every second during the session):"
+  grep -E "packet loss|^rtt" "$PING_LOG" | sed 's/^/  /' || echo "  no ping summary, see $PING_LOG"
+}
+
 stop() {
   if [ -n "$PI_PID" ]; then
     pi_load_summary
+    network_summary
     kill -TERM -- "-$PI_PID" 2> /dev/null || kill -TERM "$PI_PID" 2> /dev/null || true
     for _ in $(seq 1 30); do kill -0 "$PI_PID" 2> /dev/null || break; sleep 0.5; done
     kill -KILL -- "-$PI_PID" 2> /dev/null || kill -KILL "$PI_PID" 2> /dev/null || true
@@ -185,6 +211,8 @@ if [ "$CHECK" = true ]; then
   kill -INT "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
   for _ in $(seq 1 20); do kill -0 "$VIEW_NOW" 2> /dev/null || kill -0 "$VIEW_PLAN" 2> /dev/null || break; sleep 0.25; done
   kill -KILL "$VIEW_NOW" "$VIEW_PLAN" 2> /dev/null || true
+  # Diagnosis (ADR 0006): message rates of all topics, i.e. what would cross the WLAN in a --pi session.
+  python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/topic_rates.py" 10 | head -n 40 || true
   if python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/sim_rtf.py" 5; then
     echo "ok    sim_rtf measured the real time factor"
   else
