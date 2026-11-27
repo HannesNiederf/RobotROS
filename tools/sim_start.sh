@@ -233,6 +233,8 @@ if [ "$CHECK" = true ]; then
     fi
   fi
   if [ "$MODE" = nav ]; then
+    # Scan, odometry and AMCL while turning on the spot, against the ground truth (measurement only).
+    python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/rotation_check.py" || rc=1
     # Orders, stations, software E-stop (mission_manager part 1, ADR 0007).
     python3 "$ROOT/ros2_ws/install/robotros_sim/lib/robotros_sim/mission_check.py" || rc=1
   fi
