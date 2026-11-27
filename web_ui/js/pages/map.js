@@ -1,9 +1,9 @@
-// Map page (spec 13.3, first part): map, robot pose, plan, tap -> confirm -> goal.
-// The goal goes to /goal_pose (Nav2 bt_navigator) until the mission_manager with GOTO_POINT exists (ADR 0005).
+// Map page (spec 13.3): map, stations, robot pose, plan, tap -> confirm -> GOTO_POINT order (ADR 0008).
 import * as ros from "../ros.js";
 import * as state from "../state.js";
 import { t } from "../i18n.js";
-import { MapView, quatOf, worldToCanvas, yawOf } from "../map_view.js";
+import { errorKey } from "../mission.js";
+import { MapView, worldToCanvas, yawOf } from "../map_view.js";
 
 export function initMapPage(root) {
   const canvas = root.querySelector("#map-canvas");
@@ -26,6 +26,7 @@ export function initMapPage(root) {
     ros.callService("/map/get_snapshot", "robotros_interfaces/srv/GetSnapshot")
       .then((res) => {
         if (res.success) showMap(res.map_image, res.map_meta);
+        if (res.stations) state.set("stations", res.stations);
       })
       .catch(() => {});
   });
@@ -39,6 +40,9 @@ export function initMapPage(root) {
     state.set("planLength", pts.length);
     view.setPlan(pts);
   }, 1000);
+
+  state.on("stations", (list) => view.setStations(list));
+  const goalError = root.querySelector("#goal-error");
 
   view.onTap = (w) => {
     pending = w;
@@ -55,14 +59,24 @@ export function initMapPage(root) {
     const pose = state.get("pose");
     // Default heading: from the robot towards the goal (chosen here).
     const yaw = pose ? Math.atan2(pending.y - pose.y, pending.x - pose.x) : 0;
-    const sent = ros.publish("/goal_pose", "geometry_msgs/msg/PoseStamped", {
-      header: { frame_id: "map", stamp: { sec: 0, nanosec: 0 } },
-      pose: { position: { x: pending.x, y: pending.y, z: 0 }, orientation: quatOf(yaw) },
-    });
-    if (sent) {
-      view.setGoal(pending);
-      state.set("lastGoal", { x: pending.x, y: pending.y, yaw });
-    }
+    const goal = { x: pending.x, y: pending.y, yaw };
+    goalError.textContent = "";
+    ros.callService("/mission/create_order", "robotros_interfaces/srv/CreateOrder", {
+      type: "GOTO_POINT",
+      priority: 5,
+      source_station_id: 0,
+      dest_station_id: 0,
+      goal: { x: goal.x, y: goal.y, theta: yaw },
+    })
+      .then((res) => {
+        if (res.success) {
+          view.setGoal(goal);
+          state.set("lastGoal", { ...goal, orderId: res.order_id });
+        } else {
+          goalError.textContent = t(errorKey(res.error_code));
+        }
+      })
+      .catch(() => (goalError.textContent = t("ui.connection.lost")));
     pending = null;
   });
 

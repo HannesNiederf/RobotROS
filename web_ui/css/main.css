@@ -27,3 +27,42 @@ main { position: relative; flex: 1; min-height: 0; }
 .dialog-buttons { display: flex; justify-content: flex-end; gap: 12px; }
 button.primary { background: #1f5fd1; color: #fff; border-color: #1f5fd1; }
 .overlay { position: fixed; inset: 72px 0 0 0; background: rgba(198,40,40,0.85); color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 40px; }
+
+/* ADR 0008: E-stop button, mission pill, tabs, pages, alerts, acknowledge dialog. */
+button.estop { background: #d50000; color: #fff; border: 3px solid #fff; font-size: 22px; font-weight: 800; min-width: 120px; min-height: 64px; border-radius: 12px; }
+button.estop:active { background: #8e0000; }
+#mission { background: #37474f; }
+#mission[data-state="PAUSED_SAFETY"], #mission[data-state="HELD_WITH_CART"], #mission[data-state="NEEDS_OPERATOR"] { background: #c62828; }
+#mission[data-state="AWAIT_RESUME"], #mission[data-state="LOCKED"] { background: #ef6c00; }
+nav#tabs { display: flex; gap: 6px; padding: 6px 14px; background: #37474f; }
+nav#tabs button { background: #455a64; color: #fff; border-color: #546e7a; }
+nav#tabs button.active { background: #fff; color: #263238; }
+main.page { padding: 14px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+main[hidden] { display: none; }
+.card { background: #fff; border-radius: 12px; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.grow-card { flex: 1; min-height: 0; }
+.card-title { font-size: 20px; font-weight: 700; }
+.form { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.form label { display: flex; align-items: center; gap: 8px; }
+.form select, .form input[type="text"] { min-height: 56px; font-size: 18px; padding: 0 10px; border-radius: 8px; border: 1px solid #90a4ae; min-width: 160px; }
+.form input[type="checkbox"] { width: 32px; height: 32px; }
+.list { display: flex; flex-direction: column; gap: 8px; overflow: auto; }
+.row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: #eceff1; }
+.row[data-state="ACTIVE"] { background: #e3f2fd; }
+.row[data-state="DEFERRED"] { background: #fff3e0; }
+.row[data-state="COMPLETED"], .row[data-state="CANCELLED"] { color: #607d8b; }
+.grow { flex: 1; min-width: 0; }
+.sub { font-size: 16px; color: #546e7a; }
+.empty { color: #78909c; }
+.result, .error-line { min-height: 24px; }
+.result[data-ok="false"], .error-line { color: #c62828; }
+.result[data-ok="true"] { color: #2e7d32; }
+#goal-error { position: absolute; left: 14px; bottom: 40px; background: #fff; border-radius: 8px; padding: 0 8px; }
+#goal-error:empty { display: none; }
+.hint-small { font-size: 16px; color: #546e7a; }
+.alert-bar { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: #fff3e0; border-bottom: 2px solid #ef6c00; }
+.alert-bar[data-severity="ERROR"] { background: #ffebee; border-color: #c62828; }
+.alert-bar[data-severity="INFO"] { background: #e3f2fd; border-color: #1f5fd1; }
+.alert-bar[hidden] { display: none; }
+.alert-options { display: flex; gap: 8px; }
+.dialog.modal { position: fixed; inset: 0; z-index: 10; }
