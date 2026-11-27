@@ -45,6 +45,43 @@
       </div>
     </div>
     <div id="goal-error" class="error-line"></div>
+    <div id="resume-bar" class="resume-bar" hidden>
+      <span class="grow" data-i18n="resume.text"></span>
+      <button id="resume-go" class="primary" data-i18n="resume.go"></button>
+      <button id="resume-cancel" data-i18n="resume.cancel"></button>
+    </div>
+    <button id="drive-toggle" class="drive-toggle" data-i18n="drive.toggle"></button>
+    <div id="drive-panel" class="drive-panel" hidden>
+      <div class="drive-head">
+        <span class="card-title" data-i18n="drive.title"></span>
+        <button id="drive-speed"></button>
+      </div>
+      <div id="joystick" class="joystick"></div>
+      <div class="drive-pose-row"><span id="drive-arrow" class="drive-arrow">➜</span><span id="drive-pose"></span></div>
+      <div class="hint-small" data-i18n="drive.teach_hint"></div>
+      <button id="drive-teach" class="primary" data-i18n="drive.teach"></button>
+    </div>
+    <div id="teach-dialog" class="dialog" hidden>
+      <div class="dialog-box">
+        <div class="dialog-title" data-i18n="stations.teach"></div>
+        <div class="hint-small" data-i18n="stations.teach_hint"></div>
+        <div class="form">
+          <label><span data-i18n="stations.name"></span> <input id="teach-name" type="text" maxlength="30"></label>
+          <label><span data-i18n="stations.kind"></span>
+            <select id="teach-kind">
+              <option value="STORAGE" data-i18n="stations.kind.STORAGE"></option>
+              <option value="DOCK" data-i18n="stations.kind.DOCK"></option>
+            </select>
+          </label>
+          <label class="check"><input id="teach-occupied" type="checkbox"> <span data-i18n="stations.occupied"></span></label>
+        </div>
+        <div id="teach-result" class="error-line"></div>
+        <div class="dialog-buttons">
+          <button id="teach-cancel" data-i18n="ui.cancel"></button>
+          <button id="teach-ok" class="primary" data-i18n="drive.teach_save"></button>
+        </div>
+      </div>
+    </div>
   </main>
   <main id="page-orders" class="page" hidden>
     <section class="card">

@@ -8,6 +8,26 @@ import { errorKey } from "../mission.js";
 
 const SRV = "robotros_interfaces/srv/";
 
+/**
+ * Save a station at the robot's current pose (position and heading). Returns the service promise, or null when the
+ * pose is unknown. Used by the Stations page and the drive panel on the map (ADR 0010).
+ */
+export function teachStation(name, kind, occupied) {
+  const pose = state.get("pose");
+  if (!pose) return null;
+  const station = {
+    id: 0,
+    name: name.trim(),
+    kind,
+    pose: { x: pose.x, y: pose.y, theta: pose.yaw },
+    approach_distance: 0.4,
+    enabled: true,
+    occupied: kind === "STORAGE" && occupied,
+    cart_name: "",
+  };
+  return ros.callService("/map/upsert_station", SRV + "UpsertStation", { station });
+}
+
 export function initStationsPage(root) {
   const name = root.querySelector("#station-name");
   const kind = root.querySelector("#station-kind");
@@ -21,25 +41,15 @@ export function initStationsPage(root) {
   const lost = () => (result.textContent = t("ui.connection.lost"));
 
   root.querySelector("#station-teach").addEventListener("click", () => {
-    const pose = state.get("pose");
-    if (!pose) {
+    const res = teachStation(name.value, kind.value, occupied.checked);
+    if (!res) {
       result.textContent = t("stations.no_pose");
       return;
     }
-    const station = {
-      id: 0,
-      name: name.value.trim(),
-      kind: kind.value,
-      pose: { x: pose.x, y: pose.y, theta: pose.yaw },
-      approach_distance: 0.4,
-      enabled: true,
-      occupied: kind.value === "STORAGE" && occupied.checked,
-      cart_name: "",
-    };
-    ros.callService("/map/upsert_station", SRV + "UpsertStation", { station })
-      .then((res) => {
-        show(res, "stations.saved", { name: station.name });
-        if (res.success) name.value = "";
+    res
+      .then((r) => {
+        show(r, "stations.saved", { name: name.value.trim() });
+        if (r.success) name.value = "";
       })
       .catch(lost);
   });

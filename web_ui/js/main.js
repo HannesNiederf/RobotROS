@@ -6,6 +6,7 @@ import { initMapPage } from "./pages/map.js";
 import { initOrdersPage } from "./pages/orders.js";
 import { initStationsPage } from "./pages/stations.js";
 import { initControls } from "./controls.js";
+import { initDrivePanel } from "./drive_panel.js";
 import { headerView } from "./header.js";
 
 function renderHeader() {
@@ -53,6 +54,7 @@ async function main() {
   initOrdersPage(document.getElementById("page-orders"));
   initStationsPage(document.getElementById("page-stations"));
   initControls();
+  initDrivePanel(document.getElementById("page-map"));
   const showPage = (name) => {
     for (const b of document.querySelectorAll("#tabs [data-page]")) b.classList.toggle("active", b.dataset.page === name);
     for (const m of document.querySelectorAll("main")) m.hidden = m.id !== `page-${name}`;
