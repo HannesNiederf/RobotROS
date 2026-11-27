@@ -183,7 +183,10 @@ class DockingServer(Node):
                 if out.phase != last_phase:
                     last_phase = out.phase
                     self.pub_buzzer.publish(BuzzerCommand(pattern=out.buzzer))
-                    self.get_logger().info(f"{kind} station {handle.request.station_id}: {out.phase}")
+                    mp = self.map_pose()
+                    where = f"map ({mp.x:.3f}, {mp.y:.3f}, {mp.yaw:.3f})" if mp else "map pose unknown"
+                    self.get_logger().info(f"{kind} station {handle.request.station_id}: {out.phase} at {where}, "
+                                           f"odom ({odom.x:.3f}, {odom.y:.3f}, {odom.yaw:.3f})")
                     feedback.phase, feedback.progress = out.phase, PHASE_PROGRESS.get(out.phase, 0.0)
                     handle.publish_feedback(feedback)
                 if m.result is not None:
@@ -193,6 +196,9 @@ class DockingServer(Node):
             self.stop()
             self.publish_mask(m.mask_after())
             ok, code, detail = m.result if m.result is not None else (False, fail_code, "shutdown")
+            mp = self.map_pose()
+            self.get_logger().info(f"{kind} station {handle.request.station_id}: end {ok} {code} at "
+                                   + (f"map ({mp.x:.3f}, {mp.y:.3f}, {mp.yaw:.3f})" if mp else "map pose unknown"))
             if not ok:
                 self.get_logger().warning(f"{kind} station {handle.request.station_id} failed: {code} {detail}")
             result.success, result.error_code = ok, code
