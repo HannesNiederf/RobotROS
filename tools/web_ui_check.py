@@ -103,6 +103,37 @@ def main() -> int:
         report(wait_js("document.getElementById('mission').dataset.state === 'IDLE'", 15),
                f"mission state shown ('{page.inner_text('#mission')}')")
 
+        # Drive panel (ADR 0010): hold the joystick up -> the robot moves; teach a station with its heading.
+        page.click("#drive-toggle")
+        report(wait_js("!document.getElementById('drive-panel').hidden", 5), "drive panel opens")
+        box = page.locator("#joystick").bounding_box()
+        before = page.evaluate("window.robotros.state().pose")
+        cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+        page.mouse.move(cx, cy)
+        page.mouse.down()
+        page.mouse.move(cx, cy - box["height"] * 0.45, steps=5)
+        moved = wait_js(f"(() => {{ const p = window.robotros.state().pose; "
+                        f"return Math.hypot(p.x - {before['x']}, p.y - {before['y']}) > 0.05; }})()", 20)
+        page.mouse.up()
+        after = page.evaluate("window.robotros.state().pose")
+        dist = math.hypot(after["x"] - before["x"], after["y"] - before["y"])
+        report(moved, f"joystick drives the robot ({dist:.2f} m)")
+        page.wait_for_timeout(1500)
+        still = page.evaluate("window.robotros.state().pose")
+        page.wait_for_timeout(1500)
+        later = page.evaluate("window.robotros.state().pose")
+        drift = math.hypot(later["x"] - still["x"], later["y"] - still["y"])
+        report(drift < 0.02, f"robot stops after releasing the joystick ({drift:.3f} m in 1.5 s)")
+        page.click("#drive-teach")
+        page.fill("#teach-name", "ui_check")
+        page.click("#teach-ok")
+        yaw = later["yaw"]
+        heading_ok = (f"Math.abs(Math.atan2(Math.sin(s.pose.theta - ({yaw})), "
+                      f"Math.cos(s.pose.theta - ({yaw})))) < 0.1")
+        report(wait_js(f"(window.robotros.state().stations || []).some(s => s.name === 'ui_check' && {heading_ok})",
+                       10), "station taught from the drive panel with the robot's heading")
+        page.click("#drive-toggle")
+
         page.click("button[data-lang='de']")
         report(wait_js("document.getElementById('conn').textContent === 'Verbunden'", 5),
                f"language switch to German ('{page.inner_text('#conn')}')")
